@@ -34,6 +34,7 @@ const ProductManagement: React.FC = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchText, setSearchText] = useState('');
+    const [currentCategory, setCurrentCategory] = useState('');
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -42,13 +43,23 @@ const ProductManagement: React.FC = () => {
 
     const [form] = Form.useForm();
 
-    const fetchProducts = async (page = 1, pageSize = 10, search = '') => {
+    const fetchProducts = async (
+        page = 1,
+        pageSize = 10,
+        search = '',
+        category = '',
+        sortField = 'createdAt',
+        sortOrder: 'ascend' | 'descend' | null = null
+    ) => {
         try {
             setLoading(true);
             const response = await getAllProducts({
                 page,
                 pageSize,
                 search,
+                category,
+                sortField,
+                sortOrder,
             });
             setProducts(response.data);
             setPagination({
@@ -68,12 +79,31 @@ const ProductManagement: React.FC = () => {
     }, []);
 
     const handleTableChange = (pagination: any, filters: any, sorter: any) => {
-        fetchProducts(pagination.current, pagination.pageSize, searchText);
+        console.log('Table change:', { pagination, filters, sorter }); // For debugging
+        const categoryFilter = filters.category && filters.category.length > 0 ? filters.category[0] : '';
+        setCurrentCategory(categoryFilter);
+
+        // Handle sorting
+        const sortField = sorter.field || 'createdAt';
+        // Convert antd's sorter.order to our API's expected format
+        let sortOrder: 'ascend' | 'descend' | null = null;
+        if (sorter.order === 'ascend' || sorter.order === 'descend') {
+            sortOrder = sorter.order;
+        }
+
+        fetchProducts(
+            pagination.current,
+            pagination.pageSize,
+            searchText,
+            categoryFilter,
+            sortField,
+            sortOrder
+        );
     };
 
     const handleSearch = (value: string) => {
         setSearchText(value);
-        fetchProducts(1, pagination.pageSize, value);
+        fetchProducts(1, pagination.pageSize, value, currentCategory);
     };
 
     const showModal = (product?: Product) => {
@@ -98,7 +128,7 @@ const ProductManagement: React.FC = () => {
                 message.success('Product created successfully');
             }
             setModalVisible(false);
-            fetchProducts(pagination.current, pagination.pageSize, searchText);
+            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory);
         } catch (error) {
             message.error('Operation failed');
         }
@@ -116,7 +146,7 @@ const ProductManagement: React.FC = () => {
         try {
             await deleteProduct(id);
             message.success('Product deleted successfully');
-            fetchProducts(pagination.current, pagination.pageSize, searchText);
+            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory);
         } catch (error) {
             console.error('Delete error:', error);
             message.error('Failed to delete product');
@@ -168,10 +198,13 @@ const ProductManagement: React.FC = () => {
             key: 'column-category',
             width: 120,
             filters: [
-                { text: 'Fish', value: 'Fish', key: 'filter-fish' },
-                { text: 'Shellfish', value: 'Shellfish', key: 'filter-shellfish' },
-                { text: 'Other', value: 'Other', key: 'filter-other' },
+                { text: 'Fish', value: 'Fish' },
+                { text: 'Shellfish', value: 'Shellfish' },
+                { text: 'Other', value: 'Other' },
             ],
+            filterMode: 'menu' as const,
+            filterSearch: true,
+            onFilter: (value: any, record: Product) => record.category === value,
         },
         {
             title: 'Actions',

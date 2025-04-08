@@ -1,42 +1,53 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
-const productSchema = new mongoose.Schema({
+export interface IProduct extends Document {
+  name: string;
+  description: string;
+  price: number;
+  category: string;
+  imageUrl: string;
+  stock: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+const ProductSchema: Schema = new Schema({
   name: {
     type: String,
     required: true,
+    trim: true
   },
   description: {
     type: String,
-    required: true,
+    required: true
   },
   price: {
     type: Number,
     required: true,
+    min: 0
+  },
+  category: {
+    type: String,
+    required: true
+  },
+  imageUrl: {
+    type: String,
+    required: true
   },
   stock: {
     type: Number,
     required: true,
-    default: 0,
-  },
-  category: {
-    type: String,
-    required: true,
-    enum: ['Fish', 'Shellfish', 'Other'],
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-  updatedAt: {
-    type: Date,
-    default: Date.now,
-  },
+    min: 0,
+    default: 0
+  }
+}, {
+  timestamps: true
 });
 
 // Update the updatedAt field before saving
-productSchema.pre('save', function(next) {
+ProductSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
 
-export default mongoose.model('Product', productSchema); 
+export default mongoose.model<IProduct>('Product', ProductSchema); 

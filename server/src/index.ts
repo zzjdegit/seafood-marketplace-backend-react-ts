@@ -3,11 +3,12 @@ import mongoose from 'mongoose';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import productRoutes from './routes/products';
+import orderRoutes from './routes/orders';
 
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3008;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/seafood-marketplace';
 
 // Middleware
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Routes
 app.use('/api/products', productRoutes);
+app.use('/api/orders', orderRoutes);
 
 // Connect to MongoDB
 mongoose.connect(MONGODB_URI)

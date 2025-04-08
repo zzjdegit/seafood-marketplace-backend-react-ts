@@ -6,23 +6,39 @@ const router = express.Router();
 // Get all products with pagination and search
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search = '' } = req.query;
+    const { page = 1, pageSize = 10, search = '', category = '', sortField = 'createdAt', sortOrder = 'desc' } = req.query;
     const skip = (Number(page) - 1) * Number(pageSize);
 
-    const query = search
-      ? {
-          $or: [
-            { name: { $regex: search, $options: 'i' } },
-            { description: { $regex: search, $options: 'i' } },
-          ],
-        }
-      : {};
+    // Build query conditions
+    const query: any = {};
+    
+    // Add search condition if search text exists
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } },
+      ];
+    }
+
+    // Add category condition if category is specified
+    if (category && category !== '') {
+      query.category = category;
+    }
+
+    // Build sort object
+    const sort: any = {};
+    if (sortField) {
+      sort[sortField as string] = sortOrder === 'ascend' ? 1 : -1;
+    }
+
+    console.log('Query conditions:', query); // For debugging
+    console.log('Sort conditions:', sort); // For debugging
 
     const [products, total] = await Promise.all([
       Product.find(query)
         .skip(skip)
         .limit(Number(pageSize))
-        .sort({ createdAt: -1 }),
+        .sort(sort),
       Product.countDocuments(query),
     ]);
 
@@ -33,6 +49,7 @@ router.get('/', async (req, res) => {
       pageSize: Number(pageSize),
     });
   } catch (error) {
+    console.error('Error fetching products:', error);
     res.status(500).json({ message: 'Error fetching products', error });
   }
 });
