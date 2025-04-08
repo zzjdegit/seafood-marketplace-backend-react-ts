@@ -18,6 +18,12 @@ export interface Product {
   updatedAt: Date;
 }
 
+export interface ProductListResponse {
+  data: Product[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
 export interface User {
   id: string;
   name: string;

@@ -24,17 +24,8 @@ import {
     DollarOutlined,
     StockOutlined
 } from '@ant-design/icons';
-import { productsApi } from '../../services/api';
-
-interface Product {
-    id: number;
-    name: string;
-    description: string;
-    price: number;
-    stock: number;
-    category: string;
-}
-
+import { createProduct, deleteProduct, getAllProducts, updateProduct } from '../../api/productsApi';
+import { Product } from '../../types';
 const { Search } = Input;
 
 const ProductManagement: React.FC = () => {
@@ -54,16 +45,16 @@ const ProductManagement: React.FC = () => {
     const fetchProducts = async (page = 1, pageSize = 10, search = '') => {
         try {
             setLoading(true);
-            const response = await productsApi.getAll({
+            const response = await getAllProducts({
                 page,
                 pageSize,
                 search,
             });
-            setProducts(response.data.items);
+            setProducts(response.data);
             setPagination({
                 current: page,
                 pageSize,
-                total: response.data.total,
+                total: response.total,
             });
         } catch (error) {
             message.error('Failed to fetch products');
@@ -100,10 +91,10 @@ const ProductManagement: React.FC = () => {
         try {
             const values = await form.validateFields();
             if (editingProduct) {
-                await productsApi.update(editingProduct.id, values);
+                await updateProduct(editingProduct.id, values);
                 message.success('Product updated successfully');
             } else {
-                await productsApi.create(values);
+                await createProduct(values);
                 message.success('Product created successfully');
             }
             setModalVisible(false);
@@ -113,12 +104,21 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    const handleDelete = async (id: number) => {
+    const handleModalCancel = () => {
+        setModalVisible(false);
+    };
+
+    const handleDelete = async (id: string) => {
+        if (!id) {
+            message.error('Invalid product ID');
+            return;
+        }
         try {
-            await productsApi.delete(id);
+            await deleteProduct(id);
             message.success('Product deleted successfully');
             fetchProducts(pagination.current, pagination.pageSize, searchText);
         } catch (error) {
+            console.error('Delete error:', error);
             message.error('Failed to delete product');
         }
     };
@@ -127,65 +127,80 @@ const ProductManagement: React.FC = () => {
         {
             title: 'ID',
             dataIndex: 'id',
-            key: 'id',
-            width: 80,
+            key: 'column-id',
+            width: 220,
+            ellipsis: true,
         },
         {
             title: 'Name',
             dataIndex: 'name',
-            key: 'name',
+            key: 'column-name',
             sorter: true,
+            width: 150,
         },
         {
             title: 'Description',
             dataIndex: 'description',
-            key: 'description',
+            key: 'column-description',
             ellipsis: true,
+            width: 200,
         },
         {
             title: 'Price',
             dataIndex: 'price',
-            key: 'price',
+            key: 'column-price',
             render: (price: number) => `$${price.toFixed(2)}`,
             sorter: true,
+            width: 120,
+            align: 'right' as const,
         },
         {
             title: 'Stock',
             dataIndex: 'stock',
-            key: 'stock',
+            key: 'column-stock',
             sorter: true,
+            width: 120,
+            align: 'right' as const,
         },
         {
             title: 'Category',
             dataIndex: 'category',
-            key: 'category',
+            key: 'column-category',
+            width: 120,
             filters: [
-                { text: 'Fish', value: 'Fish' },
-                { text: 'Shellfish', value: 'Shellfish' },
-                { text: 'Other', value: 'Other' },
+                { text: 'Fish', value: 'Fish', key: 'filter-fish' },
+                { text: 'Shellfish', value: 'Shellfish', key: 'filter-shellfish' },
+                { text: 'Other', value: 'Other', key: 'filter-other' },
             ],
         },
         {
             title: 'Actions',
-            key: 'actions',
+            key: 'column-actions',
+            width: 200,
+            align: 'center' as const,
             render: (_: any, record: Product) => (
-                <Space>
+                <Space key={`actions-${record.id}`} size="middle">
                     <Button
-                        type="primary"
+                        type="link"
                         icon={<EditOutlined />}
                         onClick={() => showModal(record)}
-                    >
-                        Edit
-                    </Button>
+                        size="middle"
+                        style={{ padding: 0 }}
+                    />
                     <Popconfirm
                         title="Are you sure you want to delete this product?"
                         onConfirm={() => handleDelete(record.id)}
                         okText="Yes"
                         cancelText="No"
+                        placement="topRight"
                     >
-                        <Button type="primary" danger icon={<DeleteOutlined />}>
-                            Delete
-                        </Button>
+                        <Button 
+                            type="link" 
+                            danger 
+                            icon={<DeleteOutlined />}
+                            size="middle"
+                            style={{ padding: 0 }}
+                        />
                     </Popconfirm>
                 </Space>
             ),
@@ -198,50 +213,52 @@ const ProductManagement: React.FC = () => {
                 <h1 className="page-title">Product Management</h1>
             </div>
 
-            <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-                <Col span={8}>
-                    <Card>
+            <Row gutter={[24, 24]} style={{ marginBottom: 24 }} key="statistics-row">
+                <Col span={8} key="total-products-col">
+                    <Card key="total-products-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Products"
                             value={products.length}
-                            prefix={<ShoppingOutlined />}
+                            prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
                         />
                     </Card>
                 </Col>
-                <Col span={8}>
-                    <Card>
+                <Col span={8} key="total-stock-col">
+                    <Card key="total-stock-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Stock"
                             value={products.reduce((sum, product) => sum + product.stock, 0)}
-                            prefix={<StockOutlined />}
+                            prefix={<StockOutlined style={{ color: '#52c41a' }} />}
                         />
                     </Card>
                 </Col>
-                <Col span={8}>
-                    <Card>
+                <Col span={8} key="average-price-col">
+                    <Card key="average-price-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Average Price"
                             value={products.length ? (products.reduce((sum, product) => sum + product.price, 0) / products.length).toFixed(2) : 0}
-                            prefix={<DollarOutlined />}
+                            prefix={<DollarOutlined style={{ color: '#faad14' }} />}
                         />
                     </Card>
                 </Col>
             </Row>
 
-            <Card>
+            <Card style={{ borderRadius: '8px' }}>
                 <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Search
                         placeholder="Search products"
                         allowClear
                         enterButton={<SearchOutlined />}
                         onSearch={handleSearch}
-                        style={{ width: 300 }}
+                        style={{ width: 300, borderRadius: '6px' }}
+                        size="large"
                     />
                     <Button
                         type="primary"
                         icon={<PlusOutlined />}
                         onClick={() => showModal()}
                         size="large"
+                        style={{ borderRadius: '6px', height: '40px' }}
                     >
                         Add Product
                     </Button>
@@ -250,25 +267,33 @@ const ProductManagement: React.FC = () => {
                 <Table
                     columns={columns}
                     dataSource={products}
-                    rowKey="id"
-                    pagination={pagination}
+                    rowKey={(record) => record.id}
+                    pagination={{
+                        ...pagination,
+                        showSizeChanger: true,
+                        showQuickJumper: true,
+                        showTotal: (total) => `Total ${total} items`,
+                        style: { marginTop: '16px' }
+                    }}
                     onChange={handleTableChange}
                     loading={loading}
                     scroll={{ x: 1200 }}
+                    style={{ marginTop: '8px' }}
                 />
             </Card>
 
             <Modal
-                title={editingProduct ? 'Edit Product' : 'Add Product'}
+                title={editingProduct ? "Edit Product" : "Add Product"}
                 open={modalVisible}
                 onOk={handleModalOk}
-                onCancel={() => setModalVisible(false)}
-                destroyOnClose
+                onCancel={handleModalCancel}
                 width={600}
+                style={{ borderRadius: '8px' }}
             >
                 <Form
                     form={form}
                     layout="vertical"
+                    initialValues={editingProduct || undefined}
                 >
                     <Form.Item
                         name="name"
@@ -282,10 +307,10 @@ const ProductManagement: React.FC = () => {
                         label="Description"
                         rules={[{ required: true, message: 'Please input product description!' }]}
                     >
-                        <Input.TextArea rows={4} />
+                        <Input.TextArea rows={4} size="large" />
                     </Form.Item>
-                    <Row gutter={16}>
-                        <Col span={12}>
+                    <Row gutter={16} key="price-stock-row">
+                        <Col span={12} key="price-col">
                             <Form.Item
                                 name="price"
                                 label="Price"
@@ -300,7 +325,7 @@ const ProductManagement: React.FC = () => {
                                 />
                             </Form.Item>
                         </Col>
-                        <Col span={12}>
+                        <Col span={12} key="stock-col">
                             <Form.Item
                                 name="stock"
                                 label="Stock"
@@ -320,9 +345,9 @@ const ProductManagement: React.FC = () => {
                         rules={[{ required: true, message: 'Please select a category!' }]}
                     >
                         <Select size="large">
-                            <Select.Option value="Fish">Fish</Select.Option>
-                            <Select.Option value="Shellfish">Shellfish</Select.Option>
-                            <Select.Option value="Other">Other</Select.Option>
+                            <Select.Option value="Fish" key="fish">Fish</Select.Option>
+                            <Select.Option value="Shellfish" key="shellfish">Shellfish</Select.Option>
+                            <Select.Option value="Other" key="other">Other</Select.Option>
                         </Select>
                     </Form.Item>
                 </Form>

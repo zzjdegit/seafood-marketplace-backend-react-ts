@@ -49,7 +49,7 @@ seafood-marketplace-backend
    ```
 2. Navigate to the project directory:
    ```
-   cd seafood-marketplace-backend
+   cd seafood-marketplace-backend-react-ts
    ```
 3. Install dependencies:
    ```

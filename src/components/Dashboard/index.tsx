@@ -51,7 +51,20 @@ const Dashboard: React.FC = () => {
     colorField: 'type',
     radius: 0.8,
     label: {
-      type: 'outer',
+      autoRotate: false,
+      formatter: (text: string, item: { value: number; type: string } | undefined, idx: number) => {
+        const sum = categoryData.reduce((acc, cur) => acc + cur.value, 0);
+        const percent = ((item?.value || 0) / sum * 100).toFixed(1);
+        return `${item?.type || ''}\n${percent}%`;
+      },
+      style: {
+        fontSize: 14,
+        textAlign: 'center',
+      },
+    },
+    legend: {
+      position: 'bottom',
+      layout: 'horizontal',
     },
     interactions: [{ type: 'element-active' }],
   };
