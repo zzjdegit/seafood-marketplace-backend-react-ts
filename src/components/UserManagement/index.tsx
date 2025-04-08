@@ -24,8 +24,8 @@ import {
   TeamOutlined,
   IeOutlined
 } from '@ant-design/icons';
-import { createUser, deleteUser, getAllUsers, updateUser } from '../../api/usersApi';
-import { User } from '../../types';
+import { createUser, deleteUser, getAllUsers, updateUser, getUserStatistics } from '../../api/usersApi';
+import { User, UserStatistics } from '../../types';
 const { Search } = Input;
 
 const UserManagement: React.FC = () => {
@@ -39,6 +39,11 @@ const UserManagement: React.FC = () => {
     current: 1,
     pageSize: 10,
     total: 0,
+  });
+  const [statistics, setStatistics] = useState<UserStatistics>({
+    totalUsers: 0,
+    adminUsers: 0,
+    regularUsers: 0
   });
 
   const [form] = Form.useForm();
@@ -74,11 +79,27 @@ const UserManagement: React.FC = () => {
     }
   };
 
+  const fetchStatistics = async () => {
+    try {
+      const stats = await getUserStatistics();
+      setStatistics(stats);
+    } catch (error) {
+      message.error('Failed to fetch user statistics');
+    }
+  };
+
+  const refreshData = async () => {
+    await Promise.all([
+      fetchUsers(pagination.current, pagination.pageSize, searchText, currentRole),
+      fetchStatistics()
+    ]);
+  };
+
   useEffect(() => {
-    fetchUsers();
+    refreshData();
   }, []);
 
-  const handleTableChange = (pagination: any, filters: any, sorter: any) => {
+  const handleTableChange = async (pagination: any, filters: any, sorter: any) => {
     const roleFilter = filters.role && filters.role.length > 0 ? filters.role[0] : '';
     setCurrentRole(roleFilter);
 
@@ -88,19 +109,25 @@ const UserManagement: React.FC = () => {
       sortOrder = sorter.order;
     }
 
-    fetchUsers(
-      pagination.current,
-      pagination.pageSize,
-      searchText,
-      roleFilter,
-      sortField,
-      sortOrder
-    );
+    await Promise.all([
+      fetchUsers(
+        pagination.current,
+        pagination.pageSize,
+        searchText,
+        roleFilter,
+        sortField,
+        sortOrder
+      ),
+      fetchStatistics()
+    ]);
   };
 
-  const handleSearch = (value: string) => {
+  const handleSearch = async (value: string) => {
     setSearchText(value);
-    fetchUsers(1, pagination.pageSize, value, currentRole);
+    await Promise.all([
+      fetchUsers(1, pagination.pageSize, value, currentRole),
+      fetchStatistics()
+    ]);
   };
 
   const showModal = (user?: User) => {
@@ -129,7 +156,7 @@ const UserManagement: React.FC = () => {
         message.success('User created successfully');
       }
       setModalVisible(false);
-      fetchUsers(pagination.current, pagination.pageSize, searchText, currentRole);
+      await refreshData();
     } catch (error) {
       message.error('Operation failed');
     }
@@ -143,7 +170,7 @@ const UserManagement: React.FC = () => {
     try {
       await deleteUser(id);
       message.success('User deleted successfully');
-      fetchUsers(pagination.current, pagination.pageSize, searchText, currentRole);
+      await refreshData();
     } catch (error) {
       message.error('Failed to delete user');
     }
@@ -233,7 +260,7 @@ const UserManagement: React.FC = () => {
           <Card>
             <Statistic
               title="Total Users"
-              value={users.length}
+              value={statistics.totalUsers}
               prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
             />
           </Card>
@@ -242,7 +269,7 @@ const UserManagement: React.FC = () => {
           <Card>
             <Statistic
               title="Admin Users"
-              value={users.filter(u => u.role === 'admin').length}
+              value={statistics.adminUsers}
               prefix={<IeOutlined style={{ color: '#52c41a' }} />}
             />
           </Card>
@@ -251,7 +278,7 @@ const UserManagement: React.FC = () => {
           <Card>
             <Statistic
               title="Regular Users"
-              value={users.filter(u => u.role === 'user').length}
+              value={statistics.regularUsers}
               prefix={<UserOutlined style={{ color: '#faad14' }} />}
             />
           </Card>

@@ -76,3 +76,9 @@ export interface UserListResponse {
   page: number;
   pageSize: number;
 }
+
+export interface UserStatistics {
+  totalUsers: number;
+  adminUsers: number;
+  regularUsers: number;
+}

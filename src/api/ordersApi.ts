@@ -4,6 +4,12 @@ import config from '../config';
 
 const API_BASE_URL = config.apiBaseUrl;
 
+export interface OrderStatistics {
+  totalOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+}
+
 export const createOrder = async (orderData: Partial<Order>): Promise<Order> => {
   const response = await axios.post(`${API_BASE_URL}/orders`, orderData);
   return response.data;
@@ -21,6 +27,11 @@ export const getAllOrders = async (params: OrderListParams): Promise<OrderListRe
       sortOrder
     }
   });
+  return response.data;
+};
+
+export const getOrderStatistics = async (): Promise<OrderStatistics> => {
+  const response = await axios.get(`${API_BASE_URL}/orders/statistics`);
   return response.data;
 };
 

@@ -1,38 +1,131 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, Row, Col, Statistic } from 'antd';
-import { Line, Pie, Radar } from '@ant-design/plots';
-import { ShoppingCartOutlined, UserOutlined, DollarOutlined } from '@ant-design/icons';
+import {
+  UserOutlined,
+  ShoppingCartOutlined,
+  DollarOutlined,
+  ShoppingOutlined,
+  TeamOutlined,
+  IeOutlined,
+  CheckCircleOutlined
+} from '@ant-design/icons';
+import { Line, Pie, Column } from '@ant-design/plots';
+import { getUserStatistics } from '../../api/usersApi';
+import { getProductStatistics } from '../../api/productsApi';
+import { getOrderStatistics } from '../../api/ordersApi';
+import { UserStatistics } from '../../types';
+
+interface ProductStatistics {
+  totalProducts: number;
+  totalStock: number;
+  averagePrice: number;
+}
+
+interface OrderStatistics {
+  totalOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+}
 
 const Dashboard: React.FC = () => {
-  // 模拟数据
-  const salesData = [
-    { date: '2024-01', sales: 3500 },
-    { date: '2024-02', sales: 4200 },
-    { date: '2024-03', sales: 3800 },
-    { date: '2024-04', sales: 5000 },
-    { date: '2024-05', sales: 4800 },
-    { date: '2024-06', sales: 6000 },
+  const [userStats, setUserStats] = useState<UserStatistics>({
+    totalUsers: 0,
+    adminUsers: 0,
+    regularUsers: 0,
+  });
+
+  const [productStats, setProductStats] = useState<ProductStatistics>({
+    totalProducts: 0,
+    totalStock: 0,
+    averagePrice: 0,
+  });
+
+  const [orderStats, setOrderStats] = useState<OrderStatistics>({
+    totalOrders: 0,
+    completedOrders: 0,
+    totalRevenue: 0,
+  });
+
+  const [loading, setLoading] = useState(true);
+
+  // 用户数据转换为饼图数据
+  const userPieData = [
+    { type: 'Admin Users', value: userStats.adminUsers },
+    { type: 'Regular Users', value: userStats.regularUsers },
   ];
 
-  const categoryData = [
-    { type: 'Fish', value: 45 },
-    { type: 'Shellfish', value: 30 },
-    { type: 'Crustaceans', value: 15 },
-    { type: 'Other', value: 10 },
+  // 商品数据转换为柱形图数据
+  const productBarData = [
+    { type: 'Total Products', value: productStats.totalProducts },
+    { type: 'Total Stock', value: productStats.totalStock },
+    { type: 'Average Price', value: productStats.averagePrice },
   ];
 
-  const performanceData = [
-    { item: 'Sales Growth', score: 80 },
-    { item: 'Customer Satisfaction', score: 90 },
-    { item: 'Delivery Speed', score: 85 },
-    { item: 'Product Quality', score: 95 },
-    { item: 'Supplier Relations', score: 88 },
+  // 订单数据转换为折线图数据（模拟历史数据）
+  const orderLineData = [
+    { month: 'Jan', orders: Math.floor(orderStats.totalOrders * 0.7) },
+    { month: 'Feb', orders: Math.floor(orderStats.totalOrders * 0.8) },
+    { month: 'Mar', orders: Math.floor(orderStats.totalOrders * 0.9) },
+    { month: 'Apr', orders: Math.floor(orderStats.totalOrders * 0.85) },
+    { month: 'May', orders: Math.floor(orderStats.totalOrders * 0.95) },
+    { month: 'Jun', orders: orderStats.totalOrders },
   ];
 
+  const fetchAllStatistics = async () => {
+    try {
+      setLoading(true);
+      const [users, products, orders] = await Promise.all([
+        getUserStatistics(),
+        getProductStatistics(),
+        getOrderStatistics(),
+      ]);
+
+      setUserStats(users);
+      setProductStats(products);
+      setOrderStats(orders);
+    } catch (error) {
+      console.error('Failed to fetch statistics:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAllStatistics();
+    // 设置定时刷新，每分钟更新一次数据
+    const interval = setInterval(fetchAllStatistics, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 饼图配置
+  const pieConfig = {
+    data: userPieData,
+    angleField: 'value',
+    colorField: 'type',
+    radius: 0.8,
+    label: {
+      type: 'outer',
+      content: '{name} {percentage}',
+    },
+    interactions: [{ type: 'element-active' }],
+  };
+
+  // 柱形图配置
+  const columnConfig = {
+    data: productBarData,
+    xField: 'type',
+    yField: 'value',
+    label: {
+      position: 'top',
+    },
+    color: '#1890ff',
+  };
+
+  // 折线图配置
   const lineConfig = {
-    data: salesData,
-    xField: 'date',
-    yField: 'sales',
+    data: orderLineData,
+    xField: 'month',
+    yField: 'orders',
     smooth: true,
     point: {
       size: 5,
@@ -45,123 +138,70 @@ const Dashboard: React.FC = () => {
     },
   };
 
-  const pieConfig = {
-    data: categoryData,
-    angleField: 'value',
-    colorField: 'type',
-    radius: 0.8,
-    label: {
-      autoRotate: false,
-      formatter: (text: string, item: { value: number; type: string } | undefined, idx: number) => {
-        const sum = categoryData.reduce((acc, cur) => acc + cur.value, 0);
-        const percent = ((item?.value || 0) / sum * 100).toFixed(1);
-        return `${item?.type || ''}\n${percent}%`;
-      },
-      style: {
-        fontSize: 14,
-        textAlign: 'center',
-      },
-    },
-    legend: {
-      position: 'bottom',
-      layout: 'horizontal',
-    },
-    interactions: [{ type: 'element-active' }],
-  };
-
-  const radarConfig = {
-    data: performanceData,
-    xField: 'item',
-    yField: 'score',
-    meta: {
-      score: {
-        min: 0,
-        max: 100,
-      },
-    },
-    xAxis: {
-      line: null,
-      tickLine: null,
-    },
-    yAxis: {
-      label: false,
-      grid: {
-        alternateColor: 'rgba(0, 0, 0, 0.04)',
-      },
-    },
-    point: {
-      size: 2,
-    },
-    area: {},
-  };
-
   return (
     <div>
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
       </div>
 
-      {/* 统计卡片 */}
+      {/* 统计卡片行 */}
       <Row gutter={[24, 24]}>
-        <Col xs={24} sm={8}>
-          <Card className="dashboard-card">
+        <Col span={8}>
+          <Card>
             <Statistic
-              className="dashboard-statistic"
-              title="Total Orders"
-              value={2851}
-              prefix={<ShoppingCartOutlined />}
-              valueStyle={{ color: '#1890ff' }}
+              title="Total Users"
+              value={userStats.totalUsers}
+              prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card className="dashboard-card">
+        <Col span={8}>
+          <Card>
             <Statistic
-              className="dashboard-statistic"
-              title="Active Users"
-              value={1280}
-              prefix={<UserOutlined />}
-              valueStyle={{ color: '#52c41a' }}
+              title="Total Products"
+              value={productStats.totalProducts}
+              prefix={<ShoppingOutlined style={{ color: '#52c41a' }} />}
             />
           </Card>
         </Col>
-        <Col xs={24} sm={8}>
-          <Card className="dashboard-card">
+        <Col span={8}>
+          <Card>
             <Statistic
-              className="dashboard-statistic"
               title="Total Revenue"
-              value={289500}
-              prefix={<DollarOutlined />}
-              valueStyle={{ color: '#faad14' }}
+              value={orderStats.totalRevenue}
+              prefix={<DollarOutlined style={{ color: '#faad14' }} />}
               precision={2}
+              suffix="$"
             />
           </Card>
         </Col>
       </Row>
 
-      {/* 图表区域 */}
-      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
-        <Col xs={24} lg={12}>
-          <Card title="Monthly Sales Trend" className="dashboard-card">
-            <div className="dashboard-chart">
-              <Line {...lineConfig} />
-            </div>
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title="Product Category Distribution" className="dashboard-card">
-            <div className="dashboard-chart">
+      {/* 图表行 */}
+      <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+        {/* 用户饼图 */}
+        <Col span={8}>
+          <Card title="User Distribution" loading={loading}>
+            <div style={{ height: 300 }}>
               <Pie {...pieConfig} />
             </div>
           </Card>
         </Col>
-      </Row>
-
-      <Row gutter={[24, 24]} style={{ marginTop: '24px' }}>
-        <Col xs={24}>
-          <Card title="Performance Metrics" className="dashboard-card">
-            <div className="dashboard-chart">
-              <Radar {...radarConfig} />
+        
+        {/* 商品柱形图 */}
+        <Col span={8}>
+          <Card title="Product Statistics" loading={loading}>
+            <div style={{ height: 300 }}>
+              <Column {...columnConfig} />
+            </div>
+          </Card>
+        </Col>
+        
+        {/* 订单折线图 */}
+        <Col span={8}>
+          <Card title="Order Trends" loading={loading}>
+            <div style={{ height: 300 }}>
+              <Line {...lineConfig} />
             </div>
           </Card>
         </Col>

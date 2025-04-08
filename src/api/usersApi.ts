@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, UserListParams, UserListResponse } from '../types';
+import { User, UserListParams, UserListResponse, UserStatistics } from '../types';
 import config from '../config';
 
 const API_BASE_URL = config.apiBaseUrl;
@@ -21,6 +21,11 @@ export const getAllUsers = async (params: UserListParams): Promise<UserListRespo
       sortOrder
     }
   });
+  return response.data;
+};
+
+export const getUserStatistics = async (): Promise<UserStatistics> => {
+  const response = await axios.get(`${API_BASE_URL}/users/statistics`);
   return response.data;
 };
 

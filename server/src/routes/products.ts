@@ -3,6 +3,52 @@ import Product from '../models/Product';
 
 const router = express.Router();
 
+// Get product statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    const stats = await Product.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalProducts: { $sum: 1 },
+          totalStock: { $sum: '$stock' },
+          totalPrice: { $sum: '$price' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalProducts: 1,
+          totalStock: 1,
+          averagePrice: { $round: [{ $divide: ['$totalPrice', '$count'] }, 2] }
+        }
+      }
+    ]);
+
+    res.json(stats[0] || { totalProducts: 0, totalStock: 0, averagePrice: 0 });
+  } catch (error) {
+    console.error('Error fetching product statistics:', error);
+    res.status(500).json({ message: 'Error fetching product statistics' });
+  }
+});
+
+// Search products
+router.get('/search', async (req, res) => {
+  try {
+    const { q } = req.query;
+    const products = await Product.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { description: { $regex: q, $options: 'i' } },
+      ],
+    }).limit(10);
+    res.json(products);
+  } catch (error) {
+    res.status(500).json({ message: 'Error searching products', error });
+  }
+});
+
 // Get all products with pagination and search
 router.get('/', async (req, res) => {
   try {
@@ -111,22 +157,6 @@ router.delete('/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting product:', error);
     res.status(500).json({ message: 'Error deleting product', error });
-  }
-});
-
-// Search products
-router.get('/search', async (req, res) => {
-  try {
-    const { q } = req.query;
-    const products = await Product.find({
-      $or: [
-        { name: { $regex: q, $options: 'i' } },
-        { description: { $regex: q, $options: 'i' } },
-      ],
-    }).limit(10);
-    res.json(products);
-  } catch (error) {
-    res.status(500).json({ message: 'Error searching products', error });
   }
 });
 

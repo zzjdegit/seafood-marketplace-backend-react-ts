@@ -25,7 +25,7 @@ import {
     DollarOutlined,
     CheckCircleOutlined
 } from '@ant-design/icons';
-import { createOrder, deleteOrder, getAllOrders, updateOrder } from '../../api/ordersApi';
+import { createOrder, deleteOrder, getAllOrders, updateOrder, getOrderStatistics } from '../../api/ordersApi';
 import { Order } from '../../types';
 import { getAllProducts } from '../../api/productsApi';
 const { Search } = Input;
@@ -42,6 +42,11 @@ const OrderManagement: React.FC = () => {
         current: 1,
         pageSize: 10,
         total: 0,
+    });
+    const [statistics, setStatistics] = useState({
+        totalOrders: 0,
+        completedOrders: 0,
+        totalRevenue: 0
     });
 
     const [form] = Form.useForm();
@@ -90,9 +95,19 @@ const OrderManagement: React.FC = () => {
         }
     };
 
+    const fetchStatistics = async () => {
+        try {
+            const stats = await getOrderStatistics();
+            setStatistics(stats);
+        } catch (error) {
+            message.error('Failed to fetch order statistics');
+        }
+    };
+
     useEffect(() => {
         fetchOrders();
         fetchProducts();
+        fetchStatistics();
     }, []);
 
     const handleTableChange = (pagination: any, filters: any, sorter: any) => {
@@ -146,7 +161,10 @@ const OrderManagement: React.FC = () => {
                 message.success('Order created successfully');
             }
             setModalVisible(false);
-            fetchOrders(pagination.current, pagination.pageSize, searchText, currentStatus);
+            await Promise.all([
+                fetchOrders(pagination.current, pagination.pageSize, searchText, currentStatus),
+                fetchStatistics()
+            ]);
         } catch (error) {
             message.error('Operation failed');
         }
@@ -164,7 +182,10 @@ const OrderManagement: React.FC = () => {
         try {
             await deleteOrder(id);
             message.success('Order deleted successfully');
-            fetchOrders(pagination.current, pagination.pageSize, searchText, currentStatus);
+            await Promise.all([
+                fetchOrders(pagination.current, pagination.pageSize, searchText, currentStatus),
+                fetchStatistics()
+            ]);
         } catch (error) {
             console.error('Delete error:', error);
             message.error('Failed to delete order');
@@ -276,7 +297,7 @@ const OrderManagement: React.FC = () => {
                     <Card key="total-orders-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Orders"
-                            value={orders.length}
+                            value={statistics.totalOrders}
                             prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
                         />
                     </Card>
@@ -285,7 +306,7 @@ const OrderManagement: React.FC = () => {
                     <Card key="completed-orders-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Completed Orders"
-                            value={orders.filter(o => o.status === 'completed').length}
+                            value={statistics.completedOrders}
                             prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
                         />
                     </Card>
@@ -294,8 +315,9 @@ const OrderManagement: React.FC = () => {
                     <Card key="total-revenue-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Revenue"
-                            value={orders.reduce((sum, order) => sum + order.totalPrice, 0).toFixed(2)}
+                            value={statistics.totalRevenue}
                             prefix={<DollarOutlined style={{ color: '#faad14' }} />}
+                            precision={2}
                         />
                     </Card>
                 </Col>
