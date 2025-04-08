@@ -157,9 +157,10 @@ const ProductManagement: React.FC = () => {
         {
             title: 'ID',
             dataIndex: 'id',
-            key: 'column-id',
+            key: 'id',
             width: 220,
             ellipsis: true,
+            fixed: 'left' as const
         },
         {
             title: 'Name',
@@ -300,7 +301,7 @@ const ProductManagement: React.FC = () => {
                 <Table
                     columns={columns}
                     dataSource={products}
-                    rowKey={(record) => record.id}
+                    rowKey="id"
                     pagination={{
                         ...pagination,
                         showSizeChanger: true,
@@ -321,7 +322,6 @@ const ProductManagement: React.FC = () => {
                 onOk={handleModalOk}
                 onCancel={handleModalCancel}
                 width={600}
-                style={{ borderRadius: '8px' }}
             >
                 <Form
                     form={form}
@@ -342,46 +342,52 @@ const ProductManagement: React.FC = () => {
                     >
                         <Input.TextArea rows={4} size="large" />
                     </Form.Item>
-                    <Row gutter={16} key="price-stock-row">
-                        <Col span={12} key="price-col">
-                            <Form.Item
-                                name="price"
-                                label="Price"
-                                rules={[{ required: true, message: 'Please input product price!' }]}
-                            >
-                                <InputNumber
-                                    min={0}
-                                    precision={2}
-                                    style={{ width: '100%' }}
-                                    size="large"
-                                    prefix="$"
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12} key="stock-col">
-                            <Form.Item
-                                name="stock"
-                                label="Stock"
-                                rules={[{ required: true, message: 'Please input stock quantity!' }]}
-                            >
-                                <InputNumber 
-                                    min={0} 
-                                    style={{ width: '100%' }} 
-                                    size="large"
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                    <Form.Item
+                        name="price"
+                        label="Price"
+                        rules={[
+                            { required: true, message: 'Please input product price!' },
+                            { type: 'number', min: 0, message: 'Price must be greater than 0!' }
+                        ]}
+                    >
+                        <InputNumber
+                            prefix="$"
+                            min={0}
+                            step={0.01}
+                            style={{ width: '100%' }}
+                            size="large"
+                        />
+                    </Form.Item>
                     <Form.Item
                         name="category"
                         label="Category"
-                        rules={[{ required: true, message: 'Please select a category!' }]}
+                        rules={[{ required: true, message: 'Please select product category!' }]}
                     >
                         <Select size="large">
-                            <Select.Option value="Fish" key="fish">Fish</Select.Option>
-                            <Select.Option value="Shellfish" key="shellfish">Shellfish</Select.Option>
-                            <Select.Option value="Other" key="other">Other</Select.Option>
+                            <Select.Option value="Fish">Fish</Select.Option>
+                            <Select.Option value="Shellfish">Shellfish</Select.Option>
+                            <Select.Option value="Other">Other</Select.Option>
                         </Select>
+                    </Form.Item>
+                    <Form.Item
+                        name="stock"
+                        label="Stock"
+                        rules={[
+                            { required: true, message: 'Please input stock quantity!' },
+                            { type: 'number', min: 0, message: 'Stock must be greater than or equal to 0!' }
+                        ]}
+                    >
+                        <InputNumber
+                            min={0}
+                            style={{ width: '100%' }}
+                            size="large"
+                        />
+                    </Form.Item>
+                    <Form.Item
+                        name="imageUrl"
+                        label="Image URL"
+                    >
+                        <Input size="large" />
                     </Form.Item>
                 </Form>
             </Modal>

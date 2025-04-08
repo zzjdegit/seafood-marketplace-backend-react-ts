@@ -18,7 +18,6 @@ export const getAllProducts = async ({
     sortOrder
 }: ProductListParams): Promise<ProductListResponse> => {
     try {
-        // Convert sortOrder to backend format
         const apiParams = {
             page,
             pageSize,
@@ -31,15 +30,8 @@ export const getAllProducts = async ({
         const response = await axios.get(`${API_BASE_URL}/products`, {
             params: apiParams,
         });
-        // Map MongoDB _id to id for frontend
-        const mappedData = response.data.data.map((product: any) => ({
-            ...product,
-            id: product._id,
-        }));
-        return {
-            ...response.data,
-            data: mappedData,
-        };
+        
+        return response.data;
     } catch (error) {
         console.error('Error fetching products:', error);
         throw error;
@@ -50,10 +42,7 @@ export const getAllProducts = async ({
 export const getProductById = async (id: string): Promise<Product> => {
     try {
         const response = await axios.get(`${API_BASE_URL}/products/${id}`);
-        return {
-            ...response.data,
-            id: response.data._id,
-        };
+        return response.data;
     } catch (error) {
         console.error(`Error fetching product with id ${id}:`, error);
         throw error;
@@ -64,10 +53,7 @@ export const getProductById = async (id: string): Promise<Product> => {
 export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> => {
     try {
         const response = await axios.post(`${API_BASE_URL}/products`, product);
-        return {
-            ...response.data,
-            id: response.data._id,
-        };
+        return response.data;
     } catch (error) {
         console.error('Error creating product:', error);
         throw error;
@@ -78,10 +64,7 @@ export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 
 export const updateProduct = async (id: string, product: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product> => {
     try {
         const response = await axios.put(`${API_BASE_URL}/products/${id}`, product);
-        return {
-            ...response.data,
-            id: response.data._id,
-        };
+        return response.data;
     } catch (error) {
         console.error(`Error updating product with id ${id}:`, error);
         throw error;

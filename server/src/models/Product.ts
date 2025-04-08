@@ -4,8 +4,8 @@ export interface IProduct extends Document {
   name: string;
   description: string;
   price: number;
-  category: string;
-  imageUrl: string;
+  category: 'Fish' | 'Shellfish' | 'Other';
+  imageUrl?: string;
   stock: number;
   createdAt: Date;
   updatedAt: Date;
@@ -28,11 +28,12 @@ const ProductSchema: Schema = new Schema({
   },
   category: {
     type: String,
-    required: true
+    required: true,
+    enum: ['Fish', 'Shellfish', 'Other']
   },
   imageUrl: {
     type: String,
-    required: true
+    required: false
   },
   stock: {
     type: Number,
@@ -41,7 +42,15 @@ const ProductSchema: Schema = new Schema({
     default: 0
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: {
+    transform: function(doc, ret) {
+      ret.id = ret._id;
+      delete ret._id;
+      delete ret.__v;
+      return ret;
+    }
+  }
 });
 
 // Update the updatedAt field before saving
