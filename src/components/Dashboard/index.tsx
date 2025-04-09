@@ -27,6 +27,11 @@ interface OrderStatistics {
   totalRevenue: number;
 }
 
+interface PieDataItem {
+  type: string;
+  value: number;
+}
+
 const Dashboard: React.FC = () => {
   const [userStats, setUserStats] = useState<UserStatistics>({
     totalUsers: 0,
@@ -104,8 +109,14 @@ const Dashboard: React.FC = () => {
     colorField: 'type',
     radius: 0.8,
     label: {
-      type: 'outer',
-      content: '{name} {percentage}',
+      formatter: (datum: PieDataItem) => {
+        if (!datum || !userStats.totalUsers) return '';
+        return `${datum.type}: ${((datum.value / userStats.totalUsers) * 100).toFixed(1)}%`;
+      },
+      autoRotate: true,
+    },
+    legend: {
+      position: 'bottom',
     },
     interactions: [{ type: 'element-active' }],
   };
@@ -129,7 +140,12 @@ const Dashboard: React.FC = () => {
     smooth: true,
     point: {
       size: 5,
-      shape: 'diamond',
+      shape: 'circle',
+      style: {
+        fill: 'white',
+        stroke: '#1890ff',
+        lineWidth: 2
+      }
     },
     label: {
       style: {
@@ -139,13 +155,13 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div>
+    <div style={{ padding: '24px' }}>
       <div className="page-header">
         <h1 className="page-title">Dashboard</h1>
       </div>
 
       {/* 统计卡片行 */}
-      <Row gutter={[24, 24]}>
+      <Row gutter={[16, 16]}>
         <Col span={8}>
           <Card>
             <Statistic
@@ -178,7 +194,7 @@ const Dashboard: React.FC = () => {
       </Row>
 
       {/* 图表行 */}
-      <Row gutter={[24, 24]} style={{ marginTop: 24 }}>
+      <Row gutter={[16, 16]} style={{ marginTop: '24px' }}>
         {/* 用户饼图 */}
         <Col span={8}>
           <Card title="User Distribution" loading={loading}>

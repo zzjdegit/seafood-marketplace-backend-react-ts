@@ -1,19 +1,23 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import ReactDOM from 'react-dom/client';
 import App from './App';
-import './styles/global.css';
 
-const queryClient = new QueryClient();
+async function prepare() {
+  if (process.env.NODE_ENV === 'development') {
+    const { worker } = await import('./mocks/browser');
+    await worker.start({
+      onUnhandledRequest: 'bypass',
+    });
+  }
+}
 
-const container = document.getElementById('root');
-if (!container) throw new Error('Failed to find the root element');
-const root = createRoot(container);
-
-root.render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
+prepare().then(() => {
+  const root = ReactDOM.createRoot(
+    document.getElementById('root') as HTMLElement
+  );
+  root.render(
+    <React.StrictMode>
       <App />
-    </QueryClientProvider>
-  </React.StrictMode>
-);
+    </React.StrictMode>
+  );
+});

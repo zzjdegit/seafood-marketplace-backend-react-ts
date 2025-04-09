@@ -1,42 +1,13 @@
 import axios from 'axios';
-import { 
-    Product, 
-    ProductListResponse, 
-    ProductListParams 
-} from '../types/index';
 import config from '../config';
+import { Product, ProductStatistics, ProductListParams, ApiResponse } from '../types';
 
-const API_BASE_URL = config.apiBaseUrl;
-
-interface ProductStatistics {
-    totalProducts: number;
-    totalStock: number;
-    averagePrice: number;
-}
+const BASE_URL = `${config.apiBaseUrl}/products`;
 
 // 获取所有产品
-export const getAllProducts = async ({
-    page,
-    pageSize,
-    search,
-    category,
-    sortField,
-    sortOrder
-}: ProductListParams): Promise<ProductListResponse> => {
+export const getProducts = async (params: ProductListParams): Promise<ApiResponse<Product>> => {
     try {
-        const apiParams = {
-            page,
-            pageSize,
-            search,
-            category,
-            sortField,
-            sortOrder: sortOrder === 'ascend' ? 'asc' : sortOrder === 'descend' ? 'desc' : 'desc'
-        };
-
-        const response = await axios.get(`${API_BASE_URL}/products`, {
-            params: apiParams,
-        });
-        
+        const response = await axios.get(BASE_URL, { params });
         return response.data;
     } catch (error) {
         console.error('Error fetching products:', error);
@@ -47,7 +18,7 @@ export const getAllProducts = async ({
 // 获取单个产品详情
 export const getProductById = async (id: string): Promise<Product> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/products/${id}`);
+        const response = await axios.get(`${BASE_URL}/${id}`);
         return response.data;
     } catch (error) {
         console.error(`Error fetching product with id ${id}:`, error);
@@ -56,9 +27,9 @@ export const getProductById = async (id: string): Promise<Product> => {
 };
 
 // 创建新产品
-export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> => {
+export const createProduct = async (productData: Omit<Product, 'id'>): Promise<Product> => {
     try {
-        const response = await axios.post(`${API_BASE_URL}/products`, product);
+        const response = await axios.post(BASE_URL, productData);
         return response.data;
     } catch (error) {
         console.error('Error creating product:', error);
@@ -67,22 +38,23 @@ export const createProduct = async (product: Omit<Product, 'id' | 'createdAt' | 
 };
 
 // 更新产品
-export const updateProduct = async (id: string, product: Partial<Omit<Product, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Product> => {
+export const updateProduct = async (id: string, productData: Partial<Omit<Product, 'id'>>): Promise<Product> => {
     try {
-        const response = await axios.put(`${API_BASE_URL}/products/${id}`, product);
+        const response = await axios.put(`${BASE_URL}/${id}`, productData);
         return response.data;
     } catch (error) {
-        console.error(`Error updating product with id ${id}:`, error);
+        console.error('Error updating product:', error);
         throw error;
     }
 };
 
 // 删除产品
-export const deleteProduct = async (id: string): Promise<void> => {
+export const deleteProduct = async (id: string): Promise<{ success: boolean }> => {
     try {
-        await axios.delete(`${API_BASE_URL}/products/${id}`);
+        const response = await axios.delete(`${BASE_URL}/${id}`);
+        return response.data;
     } catch (error) {
-        console.error(`Error deleting product with id ${id}:`, error);
+        console.error('Error deleting product:', error);
         throw error;
     }
 };
@@ -90,7 +62,7 @@ export const deleteProduct = async (id: string): Promise<void> => {
 // 搜索产品
 export const searchProducts = async (query: string): Promise<Product[]> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/products/search`, {
+        const response = await axios.get(`${BASE_URL}/search`, {
             params: { q: query }
         });
         return response.data;
@@ -103,7 +75,7 @@ export const searchProducts = async (query: string): Promise<Product[]> => {
 // Get product statistics
 export const getProductStatistics = async (): Promise<ProductStatistics> => {
     try {
-        const response = await axios.get(`${API_BASE_URL}/products/statistics`);
+        const response = await axios.get(`${BASE_URL}/statistics`);
         return response.data;
     } catch (error) {
         console.error('Error fetching product statistics:', error);

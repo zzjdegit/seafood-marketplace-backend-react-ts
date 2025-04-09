@@ -24,7 +24,7 @@ import {
   TeamOutlined,
   IeOutlined
 } from '@ant-design/icons';
-import { createUser, deleteUser, getAllUsers, updateUser, getUserStatistics } from '../../api/usersApi';
+import { createUser, deleteUser, getUsers, updateUser, getUserStatistics } from '../../api/usersApi';
 import { User, UserStatistics } from '../../types';
 const { Search } = Input;
 
@@ -58,11 +58,11 @@ const UserManagement: React.FC = () => {
   ) => {
     try {
       setLoading(true);
-      const response = await getAllUsers({
+      const response = await getUsers({
         page,
         pageSize,
         search,
-        role,
+        role: role as 'admin' | 'user',
         sortField,
         sortOrder,
       });

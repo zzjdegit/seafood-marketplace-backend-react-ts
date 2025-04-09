@@ -24,9 +24,10 @@ import {
     DollarOutlined,
     StockOutlined
 } from '@ant-design/icons';
-import { createProduct, deleteProduct, getAllProducts, updateProduct, getProductStatistics } from '../../api/productsApi';
-import { Product } from '../../types';
+import { Product, ProductListParams } from '../../types';
+import { getProducts, createProduct, updateProduct, deleteProduct, getProductStatistics } from '../../api/productsApi';
 const { Search } = Input;
+const { Option } = Select;
 
 const ProductManagement: React.FC = () => {
     const [products, setProducts] = useState<Product[]>([]);
@@ -34,7 +35,7 @@ const ProductManagement: React.FC = () => {
     const [modalVisible, setModalVisible] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchText, setSearchText] = useState('');
-    const [currentCategory, setCurrentCategory] = useState('');
+    const [currentCategory, setCurrentCategory] = useState<string | undefined>();
     const [pagination, setPagination] = useState({
         current: 1,
         pageSize: 10,
@@ -44,31 +45,23 @@ const ProductManagement: React.FC = () => {
 
     const [form] = Form.useForm();
 
-    const fetchProducts = async (
-        page = 1,
-        pageSize = 10,
-        search = '',
-        category = '',
-        sortField = 'createdAt',
-        sortOrder: 'ascend' | 'descend' | null = null
-    ) => {
+    const fetchProducts = async () => {
         try {
             setLoading(true);
-            const response = await getAllProducts({
-                page,
-                pageSize,
-                search,
-                category,
-                sortField,
-                sortOrder,
-            });
+            const params: ProductListParams = {
+                page: pagination.current,
+                pageSize: pagination.pageSize,
+                search: searchText,
+                category: currentCategory,
+            };
+            const response = await getProducts(params);
             setProducts(response.data);
-            setPagination({
-                current: page,
-                pageSize,
+            setPagination(prev => ({
+                ...prev,
                 total: response.total,
-            });
+            }));
         } catch (error) {
+            console.error('Failed to fetch products:', error);
             message.error('Failed to fetch products');
         } finally {
             setLoading(false);
@@ -86,7 +79,7 @@ const ProductManagement: React.FC = () => {
 
     const refreshData = async () => {
         await Promise.all([
-            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory),
+            fetchProducts(),
             fetchStatistics()
         ]);
     };
@@ -106,14 +99,7 @@ const ProductManagement: React.FC = () => {
         }
 
         await Promise.all([
-            fetchProducts(
-                pagination.current,
-                pagination.pageSize,
-                searchText,
-                categoryFilter,
-                sortField,
-                sortOrder
-            ),
+            fetchProducts(),
             fetchStatistics()
         ]);
     };
@@ -121,7 +107,7 @@ const ProductManagement: React.FC = () => {
     const handleSearch = async (value: string) => {
         setSearchText(value);
         await Promise.all([
-            fetchProducts(1, pagination.pageSize, value, currentCategory),
+            fetchProducts(),
             fetchStatistics()
         ]);
     };
@@ -149,9 +135,11 @@ const ProductManagement: React.FC = () => {
                 message.success('Product created successfully');
             }
             setModalVisible(false);
+            form.resetFields();
             await refreshData();
         } catch (error) {
-            message.error('Operation failed');
+            console.error('Failed to save product:', error);
+            message.error('Failed to save product');
         }
     };
 
@@ -169,7 +157,7 @@ const ProductManagement: React.FC = () => {
             message.success('Product deleted successfully');
             await refreshData();
         } catch (error) {
-            console.error('Delete error:', error);
+            console.error('Failed to delete product:', error);
             message.error('Failed to delete product');
         }
     };
@@ -386,9 +374,9 @@ const ProductManagement: React.FC = () => {
                         rules={[{ required: true, message: 'Please select product category!' }]}
                     >
                         <Select size="large">
-                            <Select.Option value="Fish">Fish</Select.Option>
-                            <Select.Option value="Shellfish">Shellfish</Select.Option>
-                            <Select.Option value="Other">Other</Select.Option>
+                            <Option value="Fish">Fish</Option>
+                            <Option value="Shellfish">Shellfish</Option>
+                            <Option value="Other">Other</Option>
                         </Select>
                     </Form.Item>
                     <Form.Item

@@ -1,39 +1,55 @@
 import axios from 'axios';
-import { User, UserListParams, UserListResponse, UserStatistics } from '../types';
 import config from '../config';
+import { User, UserStatistics, UserListParams, ApiResponse } from '../types';
 
-const API_BASE_URL = config.apiBaseUrl;
+const BASE_URL = `${config.apiBaseUrl}/users`;
 
-export const createUser = async (userData: Partial<User> & { password: string }): Promise<User> => {
-  const response = await axios.post(`${API_BASE_URL}/users`, userData);
-  return response.data;
-};
-
-export const getAllUsers = async (params: UserListParams): Promise<UserListResponse> => {
-  const { page, pageSize, search, role, sortField, sortOrder } = params;
-  const response = await axios.get(`${API_BASE_URL}/users`, {
-    params: {
-      page,
-      pageSize,
-      search,
-      role,
-      sortField,
-      sortOrder
-    }
-  });
-  return response.data;
+export const getUsers = async (params: UserListParams): Promise<ApiResponse<User>> => {
+  try {
+    const response = await axios.get(BASE_URL, { params });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching users:', error);
+    throw error;
+  }
 };
 
 export const getUserStatistics = async (): Promise<UserStatistics> => {
-  const response = await axios.get(`${API_BASE_URL}/users/statistics`);
-  return response.data;
+  try {
+    const response = await axios.get(`${BASE_URL}/statistics`);
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching user statistics:', error);
+    throw error;
+  }
 };
 
-export const updateUser = async (id: string, userData: Partial<User> & { password?: string }): Promise<User> => {
-  const response = await axios.patch(`${API_BASE_URL}/users/${id}`, userData);
-  return response.data;
+export const createUser = async (userData: Omit<User, 'id' | 'createdAt'> & { password: string }): Promise<User> => {
+  try {
+    const response = await axios.post(BASE_URL, userData);
+    return response.data;
+  } catch (error) {
+    console.error('Error creating user:', error);
+    throw error;
+  }
 };
 
-export const deleteUser = async (id: string): Promise<void> => {
-  await axios.delete(`${API_BASE_URL}/users/${id}`);
+export const updateUser = async (id: string, userData: Partial<Omit<User, 'id' | 'createdAt'>>): Promise<User> => {
+  try {
+    const response = await axios.put(`${BASE_URL}/${id}`, userData);
+    return response.data;
+  } catch (error) {
+    console.error('Error updating user:', error);
+    throw error;
+  }
+};
+
+export const deleteUser = async (id: string): Promise<{ success: boolean }> => {
+  try {
+    const response = await axios.delete(`${BASE_URL}/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    throw error;
+  }
 }; 

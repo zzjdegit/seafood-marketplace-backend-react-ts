@@ -25,9 +25,9 @@ import {
     DollarOutlined,
     CheckCircleOutlined
 } from '@ant-design/icons';
-import { createOrder, deleteOrder, getAllOrders, updateOrder, getOrderStatistics } from '../../api/ordersApi';
+import { createOrder, deleteOrder, getOrders, updateOrder, getOrderStatistics } from '../../api/ordersApi';
 import { Order } from '../../types';
-import { getAllProducts } from '../../api/productsApi';
+import { getProducts } from '../../api/productsApi';
 const { Search } = Input;
 
 const OrderManagement: React.FC = () => {
@@ -61,7 +61,7 @@ const OrderManagement: React.FC = () => {
     ) => {
         try {
             setLoading(true);
-            const response = await getAllOrders({
+            const response = await getOrders({
                 page,
                 pageSize,
                 search,
@@ -84,7 +84,7 @@ const OrderManagement: React.FC = () => {
 
     const fetchProducts = async () => {
         try {
-            const response = await getAllProducts({
+            const response = await getProducts({
                 page: 1,
                 pageSize: 100,
                 search: '',

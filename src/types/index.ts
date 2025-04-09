@@ -1,80 +1,31 @@
-export interface Order {
-  id: string;
-  productId: string;
-  userId: string;
-  quantity: number;
-  status: 'pending' | 'completed' | 'canceled';
-  totalPrice: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface OrderListParams {
-  page: number;
-  pageSize: number;
-  search: string;
-  status?: 'pending' | 'completed' | 'canceled';
-  sortField?: string;
-  sortOrder?: 'ascend' | 'descend' | null;
-}
-
-export interface OrderListResponse {
-  data: Order[];
+// API Response types
+export interface ApiResponse<T> {
+  data: T[];
   total: number;
   page: number;
   pageSize: number;
 }
 
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: 'Fish' | 'Shellfish' | 'Other';
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-export interface ProductListParams {
+// List Parameter types
+export interface ListParams {
   page: number;
   pageSize: number;
-  search: string;
-  category?: string;
+  search?: string;
   sortField?: string;
   sortOrder?: 'ascend' | 'descend' | null;
 }
 
-export interface ProductListResponse {
-  data: Product[];
-  total: number;
-  page: number;
-  pageSize: number;
-}
-
+// User types
 export interface User {
   id: string;
-  name: string;
+  username: string;
   email: string;
-  role: 'user' | 'admin';
-  createdAt: Date;
-  updatedAt: Date;
+  role: 'admin' | 'user';
+  createdAt: string;
 }
 
-export interface UserListParams {
-  page: number;
-  pageSize: number;
-  search: string;
-  role?: string;
-  sortField?: string;
-  sortOrder?: 'ascend' | 'descend' | null;
-}
-
-export interface UserListResponse {
-  data: User[];
-  total: number;
-  page: number;
-  pageSize: number;
+export interface UserListParams extends ListParams {
+  role?: 'admin' | 'user';
 }
 
 export interface UserStatistics {
@@ -82,3 +33,59 @@ export interface UserStatistics {
   adminUsers: number;
   regularUsers: number;
 }
+
+// Product types
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  stock: number;
+  category: string;
+}
+
+export interface ProductListParams extends ListParams {
+  category?: string;
+}
+
+export interface ProductStatistics {
+  totalProducts: number;
+  totalStock: number;
+  averagePrice: number;
+}
+
+// Order types
+export interface Order {
+  id: string;
+  product: {
+    id: string;
+    name: string;
+    price: number;
+  };
+  quantity: number;
+  totalPrice: number;
+  status: 'pending' | 'processing' | 'completed' | 'cancelled';
+  createdAt: string;
+}
+
+export interface OrderListParams extends ListParams {
+  status?: 'pending' | 'processing' | 'completed' | 'cancelled';
+}
+
+export interface OrderStatistics {
+  totalOrders: number;
+  completedOrders: number;
+  totalRevenue: number;
+}
+
+// Remove duplicate interfaces
+// export interface PaginatedResponse<T> {
+//   items: T[];
+//   total: number;
+// }
+
+// export interface PaginationParams {
+//   page: number;
+//   pageSize: number;
+//   searchText?: string;
+// }
