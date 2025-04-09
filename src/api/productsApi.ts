@@ -8,6 +8,12 @@ import config from '../config';
 
 const API_BASE_URL = config.apiBaseUrl;
 
+interface ProductStatistics {
+    totalProducts: number;
+    totalStock: number;
+    averagePrice: number;
+}
+
 // 获取所有产品
 export const getAllProducts = async ({
     page,
@@ -90,6 +96,17 @@ export const searchProducts = async (query: string): Promise<Product[]> => {
         return response.data;
     } catch (error) {
         console.error('Error searching products:', error);
+        throw error;
+    }
+};
+
+// Get product statistics
+export const getProductStatistics = async (): Promise<ProductStatistics> => {
+    try {
+        const response = await axios.get(`${API_BASE_URL}/products/statistics`);
+        return response.data;
+    } catch (error) {
+        console.error('Error fetching product statistics:', error);
         throw error;
     }
 }; 

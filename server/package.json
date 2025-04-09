@@ -10,6 +10,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@ant-design/plots": "^2.3.3",
     "@types/bcryptjs": "^2.4.6",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",

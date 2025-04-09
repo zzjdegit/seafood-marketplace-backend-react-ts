@@ -24,7 +24,7 @@ import {
     DollarOutlined,
     StockOutlined
 } from '@ant-design/icons';
-import { createProduct, deleteProduct, getAllProducts, updateProduct } from '../../api/productsApi';
+import { createProduct, deleteProduct, getAllProducts, updateProduct, getProductStatistics } from '../../api/productsApi';
 import { Product } from '../../types';
 const { Search } = Input;
 
@@ -40,6 +40,7 @@ const ProductManagement: React.FC = () => {
         pageSize: 10,
         total: 0,
     });
+    const [statistics, setStatistics] = useState({ totalStock: 0, averagePrice: 0 });
 
     const [form] = Form.useForm();
 
@@ -74,36 +75,55 @@ const ProductManagement: React.FC = () => {
         }
     };
 
+    const fetchStatistics = async () => {
+        try {
+            const stats = await getProductStatistics();
+            setStatistics(stats);
+        } catch (error) {
+            message.error('Failed to fetch statistics');
+        }
+    };
+
+    const refreshData = async () => {
+        await Promise.all([
+            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory),
+            fetchStatistics()
+        ]);
+    };
+
     useEffect(() => {
-        fetchProducts();
+        refreshData();
     }, []);
 
-    const handleTableChange = (pagination: any, filters: any, sorter: any) => {
-        console.log('Table change:', { pagination, filters, sorter }); // For debugging
+    const handleTableChange = async (pagination: any, filters: any, sorter: any) => {
         const categoryFilter = filters.category && filters.category.length > 0 ? filters.category[0] : '';
         setCurrentCategory(categoryFilter);
 
-        // Handle sorting
         const sortField = sorter.field || 'createdAt';
-        // Convert antd's sorter.order to our API's expected format
         let sortOrder: 'ascend' | 'descend' | null = null;
         if (sorter.order === 'ascend' || sorter.order === 'descend') {
             sortOrder = sorter.order;
         }
 
-        fetchProducts(
-            pagination.current,
-            pagination.pageSize,
-            searchText,
-            categoryFilter,
-            sortField,
-            sortOrder
-        );
+        await Promise.all([
+            fetchProducts(
+                pagination.current,
+                pagination.pageSize,
+                searchText,
+                categoryFilter,
+                sortField,
+                sortOrder
+            ),
+            fetchStatistics()
+        ]);
     };
 
-    const handleSearch = (value: string) => {
+    const handleSearch = async (value: string) => {
         setSearchText(value);
-        fetchProducts(1, pagination.pageSize, value, currentCategory);
+        await Promise.all([
+            fetchProducts(1, pagination.pageSize, value, currentCategory),
+            fetchStatistics()
+        ]);
     };
 
     const showModal = (product?: Product) => {
@@ -120,6 +140,7 @@ const ProductManagement: React.FC = () => {
     const handleModalOk = async () => {
         try {
             const values = await form.validateFields();
+            
             if (editingProduct) {
                 await updateProduct(editingProduct.id, values);
                 message.success('Product updated successfully');
@@ -128,7 +149,7 @@ const ProductManagement: React.FC = () => {
                 message.success('Product created successfully');
             }
             setModalVisible(false);
-            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory);
+            await refreshData();
         } catch (error) {
             message.error('Operation failed');
         }
@@ -146,7 +167,7 @@ const ProductManagement: React.FC = () => {
         try {
             await deleteProduct(id);
             message.success('Product deleted successfully');
-            fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory);
+            await refreshData();
         } catch (error) {
             console.error('Delete error:', error);
             message.error('Failed to delete product');
@@ -252,7 +273,7 @@ const ProductManagement: React.FC = () => {
                     <Card key="total-products-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Products"
-                            value={products.length}
+                            value={pagination.total}
                             prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
                         />
                     </Card>
@@ -261,7 +282,7 @@ const ProductManagement: React.FC = () => {
                     <Card key="total-stock-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Total Stock"
-                            value={products.reduce((sum, product) => sum + product.stock, 0)}
+                            value={statistics.totalStock}
                             prefix={<StockOutlined style={{ color: '#52c41a' }} />}
                         />
                     </Card>
@@ -270,8 +291,9 @@ const ProductManagement: React.FC = () => {
                     <Card key="average-price-card" style={{ borderRadius: '8px' }}>
                         <Statistic
                             title="Average Price"
-                            value={products.length ? (products.reduce((sum, product) => sum + product.price, 0) / products.length).toFixed(2) : 0}
+                            value={statistics.averagePrice}
                             prefix={<DollarOutlined style={{ color: '#faad14' }} />}
+                            precision={2}
                         />
                     </Card>
                 </Col>

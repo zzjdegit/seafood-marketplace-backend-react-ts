@@ -5,6 +5,43 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
+// Get user statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    const stats = await User.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalUsers: { $sum: 1 },
+          adminUsers: {
+            $sum: {
+              $cond: [{ $eq: ['$role', 'admin'] }, 1, 0]
+            }
+          },
+          regularUsers: {
+            $sum: {
+              $cond: [{ $eq: ['$role', 'user'] }, 1, 0]
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalUsers: 1,
+          adminUsers: 1,
+          regularUsers: 1
+        }
+      }
+    ]);
+
+    res.json(stats[0] || { totalUsers: 0, adminUsers: 0, regularUsers: 0 });
+  } catch (error) {
+    console.error('Error fetching user statistics:', error);
+    res.status(500).json({ message: 'Error fetching user statistics' });
+  }
+});
+
 // Get all users with pagination, search, and sorting
 router.get('/', async (req, res) => {
   try {

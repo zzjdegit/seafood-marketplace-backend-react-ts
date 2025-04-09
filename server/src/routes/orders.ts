@@ -5,6 +5,41 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
+// Get order statistics
+router.get('/statistics', async (req, res) => {
+  try {
+    const stats = await Order.aggregate([
+      {
+        $group: {
+          _id: null,
+          totalOrders: { $sum: 1 },
+          completedOrders: {
+            $sum: {
+              $cond: [{ $eq: ['$status', 'completed'] }, 1, 0]
+            }
+          },
+          totalRevenue: {
+            $sum: '$totalPrice'
+          }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          totalOrders: 1,
+          completedOrders: 1,
+          totalRevenue: { $round: ['$totalRevenue', 2] }
+        }
+      }
+    ]);
+
+    res.json(stats[0] || { totalOrders: 0, completedOrders: 0, totalRevenue: 0 });
+  } catch (error) {
+    console.error('Error fetching order statistics:', error);
+    res.status(500).json({ message: 'Error fetching order statistics' });
+  }
+});
+
 // Get all orders with pagination, search, and sorting
 router.get('/', async (req, res) => {
   try {
