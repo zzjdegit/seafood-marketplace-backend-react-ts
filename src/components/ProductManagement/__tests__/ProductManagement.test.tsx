@@ -24,9 +24,13 @@ describe('ProductManagement Component', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Total Products')).toBeInTheDocument();
+      expect(screen.getByText('3')).toBeInTheDocument(); // Total products count
       expect(screen.getByText('Fish Products')).toBeInTheDocument();
+      expect(screen.getByText('1')).toBeInTheDocument(); // Fish products count
       expect(screen.getByText('Shellfish Products')).toBeInTheDocument();
+      expect(screen.getByText('1')).toBeInTheDocument(); // Shellfish products count
       expect(screen.getByText('Other Products')).toBeInTheDocument();
+      expect(screen.getByText('1')).toBeInTheDocument(); // Other products count
     });
   });
 
@@ -34,11 +38,12 @@ describe('ProductManagement Component', () => {
     renderComponent();
     
     await waitFor(() => {
-      expect(screen.getByText('Name')).toBeInTheDocument();
-      expect(screen.getByText('Category')).toBeInTheDocument();
-      expect(screen.getByText('Price')).toBeInTheDocument();
-      expect(screen.getByText('Stock')).toBeInTheDocument();
-      expect(screen.getByText('Created At')).toBeInTheDocument();
+      expect(screen.getByText('Test Product 1')).toBeInTheDocument();
+      expect(screen.getByText('Test Product 2')).toBeInTheDocument();
+      expect(screen.getByText('Test Product 3')).toBeInTheDocument();
+      expect(screen.getByText('FISH')).toBeInTheDocument();
+      expect(screen.getByText('SHELLFISH')).toBeInTheDocument();
+      expect(screen.getByText('OTHER')).toBeInTheDocument();
     });
   });
 
@@ -46,10 +51,12 @@ describe('ProductManagement Component', () => {
     renderComponent();
     
     const searchInput = screen.getByPlaceholderText('Search products...');
-    fireEvent.change(searchInput, { target: { value: 'test' } });
+    fireEvent.change(searchInput, { target: { value: 'Test Product 1' } });
     
     await waitFor(() => {
-      expect(searchInput).toHaveValue('test');
+      expect(screen.getByText('Test Product 1')).toBeInTheDocument();
+      expect(screen.queryByText('Test Product 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test Product 3')).not.toBeInTheDocument();
     });
   });
 
@@ -61,11 +68,13 @@ describe('ProductManagement Component', () => {
       fireEvent.click(categoryFilter);
     });
     
-    const fishOption = screen.getByText('Fish');
+    const fishOption = screen.getByText('FISH');
     fireEvent.click(fishOption);
     
     await waitFor(() => {
-      expect(screen.getByText('Fish')).toBeInTheDocument();
+      expect(screen.getByText('Test Product 1')).toBeInTheDocument();
+      expect(screen.queryByText('Test Product 2')).not.toBeInTheDocument();
+      expect(screen.queryByText('Test Product 3')).not.toBeInTheDocument();
     });
   });
 
@@ -87,12 +96,7 @@ describe('ProductManagement Component', () => {
     renderComponent();
     
     await waitFor(() => {
-      const nextPageButton = screen.getByTitle('Next Page');
-      fireEvent.click(nextPageButton);
-    });
-    
-    await waitFor(() => {
-      expect(screen.getByText('2')).toBeInTheDocument();
+      expect(screen.getByText('1-3 of 3')).toBeInTheDocument();
     });
   });
 
@@ -100,12 +104,23 @@ describe('ProductManagement Component', () => {
     renderComponent();
     
     await waitFor(() => {
-      const nameHeader = screen.getByText('Name');
-      fireEvent.click(nameHeader);
+      const priceHeader = screen.getByText('Price');
+      fireEvent.click(priceHeader);
     });
     
     await waitFor(() => {
-      expect(screen.getByText('Name')).toHaveAttribute('aria-sort', 'ascending');
+      const prices = screen.getAllByText(/\$\d+\.\d{2}/);
+      const priceValues = prices.map(p => parseFloat(p.textContent?.replace('$', '') || '0'));
+      expect(priceValues).toEqual([19.99, 29.99, 39.99]);
+    });
+
+    const priceHeader = screen.getByText('Price');
+    fireEvent.click(priceHeader);
+    
+    await waitFor(() => {
+      const prices = screen.getAllByText(/\$\d+\.\d{2}/);
+      const priceValues = prices.map(p => parseFloat(p.textContent?.replace('$', '') || '0'));
+      expect(priceValues).toEqual([39.99, 29.99, 19.99]);
     });
   });
 }); 

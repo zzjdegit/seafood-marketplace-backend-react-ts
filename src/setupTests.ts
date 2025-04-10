@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { server } from './mocks/server';
 
 // 在所有测试之前启动 MSW
-beforeAll(() => server.listen());
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
 
 // 在每个测试之后重置 MSW 处理器
 afterEach(() => server.resetHandlers());
@@ -32,7 +32,7 @@ class ResizeObserverMock {
   disconnect = jest.fn();
 }
 
-window.ResizeObserver = ResizeObserverMock;
+global.ResizeObserver = ResizeObserverMock;
 
 // Mock IntersectionObserver
 class IntersectionObserverMock implements IntersectionObserver {

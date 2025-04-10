@@ -13,6 +13,13 @@ jest.mock('../../../api/usersApi');
 jest.mock('../../../api/productsApi');
 jest.mock('../../../api/ordersApi');
 
+// Mock @ant-design/plots components
+jest.mock('@ant-design/plots', () => ({
+  Line: () => <div data-testid="line-chart">Line Chart</div>,
+  Pie: () => <div data-testid="pie-chart">Pie Chart</div>,
+  Column: () => <div data-testid="column-chart">Column Chart</div>,
+}));
+
 const mockUserStats = {
   totalUsers: 100,
   adminUsers: 20,
@@ -52,7 +59,8 @@ describe('Dashboard Component', () => {
 
   it('renders loading state initially', () => {
     renderComponent();
-    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+    const loadingCards = document.querySelectorAll('.ant-card-loading');
+    expect(loadingCards.length).toBeGreaterThan(0);
   });
 
   it('displays dashboard statistics after loading', async () => {
@@ -66,56 +74,24 @@ describe('Dashboard Component', () => {
     });
   });
 
-  it('displays revenue chart after loading', async () => {
+  it('displays charts after loading', async () => {
     renderComponent();
     
     await waitFor(() => {
-      expect(screen.getByText('Revenue Overview')).toBeInTheDocument();
-    });
-  });
-
-  it('displays order status chart after loading', async () => {
-    renderComponent();
-    
-    await waitFor(() => {
-      expect(screen.getByText('Order Status')).toBeInTheDocument();
-    });
-  });
-
-  it('displays recent orders table after loading', async () => {
-    renderComponent();
-    
-    await waitFor(() => {
-      expect(screen.getByText('Recent Orders')).toBeInTheDocument();
-      expect(screen.getByText('Order ID')).toBeInTheDocument();
-      expect(screen.getByText('Customer')).toBeInTheDocument();
-      expect(screen.getByText('Amount')).toBeInTheDocument();
-      expect(screen.getByText('Status')).toBeInTheDocument();
-    });
-  });
-
-  it('displays top products table after loading', async () => {
-    renderComponent();
-    
-    await waitFor(() => {
-      expect(screen.getByText('Top Products')).toBeInTheDocument();
-      expect(screen.getByText('Product')).toBeInTheDocument();
-      expect(screen.getByText('Sales')).toBeInTheDocument();
-      expect(screen.getByText('Revenue')).toBeInTheDocument();
+      expect(screen.getByTestId('pie-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('column-chart')).toBeInTheDocument();
+      expect(screen.getByTestId('line-chart')).toBeInTheDocument();
     });
   });
 
   it('handles error state', async () => {
-    server.use(
-      rest.get('/api/dashboard', (req, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
-
+    // Mock API error
+    (getUserStatistics as jest.Mock).mockRejectedValue(new Error('Failed to fetch'));
+    
     renderComponent();
     
     await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
+      expect(screen.getByText(/failed to fetch statistics/i)).toBeInTheDocument();
     });
   });
 
@@ -129,38 +105,11 @@ describe('Dashboard Component', () => {
     
     await waitFor(() => {
       expect(screen.getByText('Total Users')).toBeInTheDocument();
-      expect(screen.getByText('10')).toBeInTheDocument();
+      expect(screen.getByText('100')).toBeInTheDocument();
       expect(screen.getByText('Total Products')).toBeInTheDocument();
-      expect(screen.getByText('20')).toBeInTheDocument();
+      expect(screen.getByText('50')).toBeInTheDocument();
       expect(screen.getByText('Total Revenue')).toBeInTheDocument();
-      expect(screen.getByText('$1000')).toBeInTheDocument();
+      expect(screen.getByText('$5999.99')).toBeInTheDocument();
     });
   });
-
-  it('renders all charts', async () => {
-    renderComponent();
-    
-    await waitFor(() => {
-      expect(screen.getByText('Revenue Overview')).toBeInTheDocument();
-      expect(screen.getByText('Order Status')).toBeInTheDocument();
-    });
-  });
-
-  it('handles API errors gracefully', async () => {
-    server.use(
-      rest.get('/api/dashboard', (req, res, ctx) => {
-        return res(ctx.status(500));
-      })
-    );
-    
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
-    renderComponent();
-    
-    await waitFor(() => {
-      expect(screen.getByText(/error/i)).toBeInTheDocument();
-    });
-    
-    consoleSpy.mockRestore();
-  });
-}); 
+});

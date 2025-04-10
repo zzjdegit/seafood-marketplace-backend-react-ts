@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Statistic } from 'antd';
+import { Card, Row, Col, Statistic, Alert } from 'antd';
 import {
   UserOutlined,
   ShoppingCartOutlined,
@@ -52,6 +52,7 @@ const Dashboard: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // 用户数据转换为饼图数据
   const userPieData = [
@@ -79,6 +80,7 @@ const Dashboard: React.FC = () => {
   const fetchAllStatistics = async () => {
     try {
       setLoading(true);
+      setError(null);
       const [users, products, orders] = await Promise.all([
         getUserStatistics(),
         getProductStatistics(),
@@ -90,6 +92,7 @@ const Dashboard: React.FC = () => {
       setOrderStats(orders);
     } catch (error) {
       console.error('Failed to fetch statistics:', error);
+      setError('Failed to fetch statistics');
     } finally {
       setLoading(false);
     }
@@ -101,6 +104,19 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(fetchAllStatistics, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  if (error) {
+    return (
+      <div style={{ padding: '24px' }}>
+        <Alert
+          message="Error"
+          description={error}
+          type="error"
+          showIcon
+        />
+      </div>
+    );
+  }
 
   // 饼图配置
   const pieConfig = {
