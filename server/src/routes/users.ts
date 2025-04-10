@@ -51,27 +51,35 @@ router.get('/', async (req, res) => {
       search = '',
       role = '',
       sortField = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = '1'
     } = req.query;
 
     const query: any = {};
     
     // Add search filter
-    if (search) {
+    if (search && typeof search === 'string') {
       query.$or = [
         { username: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
+
+      // If search term looks like an ObjectId, add it to the search
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        query.$or.push({ _id: new mongoose.Types.ObjectId(search) });
+      }
     }
 
     // Add role filter
     if (role) {
-      query.role = role;
+      const roles = Array.isArray(role) ? role : (typeof role === 'string' ? role.split(',') : []);
+      query.role = { $in: roles };
     }
 
     // Create sort object
     const sort: any = {};
-    sort[sortField as string] = sortOrder === 'desc' ? -1 : 1;
+    if (sortField) {
+      sort[sortField as string] = parseInt(sortOrder as string);
+    }
 
     const skip = (Number(page) - 1) * Number(pageSize);
     
@@ -86,9 +94,7 @@ router.get('/', async (req, res) => {
 
     res.json({
       data: users,
-      total,
-      page: Number(page),
-      pageSize: Number(pageSize)
+      total
     });
   } catch (error) {
     console.error('Error fetching users:', error);

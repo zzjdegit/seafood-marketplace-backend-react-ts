@@ -7,7 +7,19 @@ const BASE_URL = `${config.apiBaseUrl}/products`;
 // 获取所有产品
 export const getProducts = async (params: ProductListParams): Promise<ApiResponse<Product>> => {
     try {
-        const response = await axios.get(BASE_URL, { params });
+        // Convert price and stock filter values to range parameters
+        const { price, stock, ...otherParams } = params;
+        const queryParams: ProductListParams = { ...otherParams };
+
+        if (price) {
+            queryParams.price = price;
+        }
+
+        if (stock) {
+            queryParams.stock = stock;
+        }
+
+        const response = await axios.get(BASE_URL, { params: queryParams });
         return response.data;
     } catch (error) {
         console.error('Error fetching products:', error);

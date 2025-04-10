@@ -1,5 +1,6 @@
 import express from 'express';
 import Product from '../models/Product';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -52,33 +53,63 @@ router.get('/search', async (req, res) => {
 // Get all products with pagination and search
 router.get('/', async (req, res) => {
   try {
-    const { page = 1, pageSize = 10, search = '', category = '', sortField = 'createdAt', sortOrder = 'desc' } = req.query;
+    const { 
+      page = 1, 
+      pageSize = 10, 
+      search = '', 
+      category = '', 
+      price = '',
+      stock = '',
+      sortField = 'createdAt', 
+      sortOrder = '1' 
+    } = req.query;
+
     const skip = (Number(page) - 1) * Number(pageSize);
 
     // Build query conditions
     const query: any = {};
     
     // Add search condition if search text exists
-    if (search) {
+    if (search && typeof search === 'string') {
       query.$or = [
         { name: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
       ];
+      
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        query.$or.push({ _id: new mongoose.Types.ObjectId(search) });
+      }
     }
 
     // Add category condition if category is specified
-    if (category && category !== '') {
-      query.category = category;
+    if (category && typeof category === 'string' && category !== '') {
+      const categories = category.split(',').filter(Boolean);
+      if (categories.length > 0) {
+        query.category = { $in: categories };
+      }
     }
 
-    // Build sort object
+    // Add price range condition if specified
+    if (price && typeof price === 'string') {
+      const [min, max] = price.split('-').map(Number);
+      if (!isNaN(min) && !isNaN(max)) {
+        query.price = { $gte: min, $lt: max };
+      }
+    }
+
+    // Add stock range condition if specified
+    if (stock && typeof stock === 'string') {
+      const [min, max] = stock.split('-').map(Number);
+      if (!isNaN(min) && !isNaN(max)) {
+        query.stock = { $gte: min, $lt: max };
+      }
+    }
+
+    // Create sort object
     const sort: any = {};
-    if (sortField) {
-      sort[sortField as string] = sortOrder === 'ascend' ? 1 : -1;
+    if (sortField && typeof sortField === 'string') {
+      sort[sortField] = parseInt(sortOrder as string);
     }
-
-    console.log('Query conditions:', query); // For debugging
-    console.log('Sort conditions:', sort); // For debugging
 
     const [products, total] = await Promise.all([
       Product.find(query)
@@ -92,7 +123,7 @@ router.get('/', async (req, res) => {
       data: products,
       total,
       page: Number(page),
-      pageSize: Number(pageSize),
+      pageSize: Number(pageSize)
     });
   } catch (error) {
     console.error('Error fetching products:', error);

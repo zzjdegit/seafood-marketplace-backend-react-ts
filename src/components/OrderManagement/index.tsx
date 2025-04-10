@@ -246,7 +246,7 @@ const OrderManagement: React.FC = () => {
             title: 'Product',
             dataIndex: 'product',
             key: 'column-product',
-            width: 250,
+            width: 220,
             render: (product: Product) => {
                 return `${product.name} - ${product.price}`;
             },

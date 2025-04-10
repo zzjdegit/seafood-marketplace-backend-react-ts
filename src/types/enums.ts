@@ -36,6 +36,28 @@ export enum UserStatusCN {
   SUSPENDED = '已停用'
 }
 
+export enum Category {
+  FISH = 'Fish',
+  SHELLFISH = 'Shellfish',
+  OTHER = 'Other'
+}
+
+export const CategoryCN = {
+  [Category.FISH]: '鱼类',
+  [Category.SHELLFISH]: '贝类',
+  [Category.OTHER]: '其他'
+} as const;
+
+export enum Role {
+    ADMIN = 'admin',
+    USER = 'user'
+}
+
+export enum RoleCN {
+    ADMIN = '管理员',
+    USER = '普通用户'
+}
+
 // Helper function to get Chinese status
 export const getStatusCN = (status: string, type: 'order' | 'product' | 'user'): string => {
   switch (type) {

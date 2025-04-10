@@ -26,6 +26,9 @@ import {
 } from '@ant-design/icons';
 import { createUser, deleteUser, getUsers, updateUser, getUserStatistics } from '../../api/usersApi';
 import { User, UserStatistics } from '../../types';
+import { Role, RoleCN } from '../../types/enums';
+import { TablePaginationConfig, FilterValue, SorterResult } from 'antd/lib/table/interface';
+
 const { Search } = Input;
 
 const UserManagement: React.FC = () => {
@@ -34,11 +37,15 @@ const UserManagement: React.FC = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [searchText, setSearchText] = useState('');
-  const [currentRole, setCurrentRole] = useState('');
-  const [pagination, setPagination] = useState({
+  const [currentRole, setCurrentRole] = useState<string>('');
+  const [pagination, setPagination] = useState<{
+    current: number;
+    pageSize: number;
+    total: number;
+  }>({
     current: 1,
     pageSize: 10,
-    total: 0,
+    total: 0
   });
   const [statistics, setStatistics] = useState<UserStatistics>({
     totalUsers: 0,
@@ -52,7 +59,7 @@ const UserManagement: React.FC = () => {
     page = 1,
     pageSize = 10,
     search = '',
-    role = '',
+    role: string = '',
     sortField = 'createdAt',
     sortOrder: 'ascend' | 'descend' | null = null
   ) => {
@@ -62,9 +69,9 @@ const UserManagement: React.FC = () => {
         page,
         pageSize,
         search,
-        role: role as 'admin' | 'user',
+        role: role || undefined,
         sortField,
-        sortOrder,
+        sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : '1',
       });
       setUsers(response.data);
       setPagination({
@@ -73,6 +80,7 @@ const UserManagement: React.FC = () => {
         total: response.total,
       });
     } catch (error) {
+      console.error('Failed to fetch users:', error);
       message.error('Failed to fetch users');
     } finally {
       setLoading(false);
@@ -88,46 +96,54 @@ const UserManagement: React.FC = () => {
     }
   };
 
-  const refreshData = async () => {
-    await Promise.all([
-      fetchUsers(pagination.current, pagination.pageSize, searchText, currentRole),
-      fetchStatistics()
-    ]);
-  };
-
   useEffect(() => {
-    refreshData();
+    fetchUsers();
+    fetchStatistics();
   }, []);
 
-  const handleTableChange = async (pagination: any, filters: any, sorter: any) => {
-    const roleFilter = filters.role && filters.role.length > 0 ? filters.role[0] : '';
-    setCurrentRole(roleFilter);
+  const handleTableChange = async (
+    pagination: TablePaginationConfig,
+    filters: Record<string, FilterValue | null>,
+    sorter: SorterResult<User> | SorterResult<User>[],
+  ) => {
+    // Get sort field and order
+    const sortField = Array.isArray(sorter) ? sorter[0]?.field : sorter?.field;
+    const sortOrder = Array.isArray(sorter) ? sorter[0]?.order : sorter?.order;
 
-    const sortField = sorter.field || 'createdAt';
-    let sortOrder: 'ascend' | 'descend' | null = null;
-    if (sorter.order === 'ascend' || sorter.order === 'descend') {
-      sortOrder = sorter.order;
+    // Get role filter
+    const role = filters['column-role'] as Role[] || [];
+
+    setPagination({
+      current: pagination.current || 1,
+      pageSize: pagination.pageSize || 10,
+      total: pagination.total || 0
+    });
+    setCurrentRole(role.join(','));
+    
+    try {
+      const usersData = await getUsers({
+        page: pagination.current || 1,
+        pageSize: pagination.pageSize || 10,
+        search: searchText,
+        role: role.join(','),
+        sortField: sortField as string,
+        sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : '1',
+      });
+      
+      setUsers(usersData.data);
+      setPagination(prev => ({
+        ...prev,
+        total: usersData.total
+      }));
+    } catch (error) {
+      message.error('Failed to fetch data');
     }
-
-    await Promise.all([
-      fetchUsers(
-        pagination.current,
-        pagination.pageSize,
-        searchText,
-        roleFilter,
-        sortField,
-        sortOrder
-      ),
-      fetchStatistics()
-    ]);
   };
 
-  const handleSearch = async (value: string) => {
+  const handleSearch = (value: string) => {
     setSearchText(value);
-    await Promise.all([
-      fetchUsers(1, pagination.pageSize, value, currentRole),
-      fetchStatistics()
-    ]);
+    setPagination(prev => ({ ...prev, current: 1 }));
+    fetchUsers(1, pagination.pageSize, value, currentRole);
   };
 
   const showModal = (user?: User) => {
@@ -164,7 +180,10 @@ const UserManagement: React.FC = () => {
       }
       setModalVisible(false);
       form.resetFields();
-      await refreshData();
+      await Promise.all([
+        fetchUsers(pagination.current, pagination.pageSize, searchText),
+        fetchStatistics()
+      ]);
     } catch (error: any) {
       message.error(error?.response?.data?.message || 'Operation failed');
     }
@@ -178,18 +197,21 @@ const UserManagement: React.FC = () => {
     try {
       await deleteUser(id);
       message.success('User deleted successfully');
-      await refreshData();
+      await Promise.all([
+        fetchUsers(pagination.current, pagination.pageSize, searchText, currentRole),
+        fetchStatistics()
+      ]);
     } catch (error) {
       message.error('Failed to delete user');
     }
   };
 
-  const getRoleColor = (role: string) => {
+  const getRoleColor = (role: Role) => {
     switch (role) {
-      case 'admin':
+      case Role.ADMIN:
         return 'red';
-      case 'user':
-        return 'green';
+      case Role.USER:
+        return 'blue';
       default:
         return 'default';
     }
@@ -197,47 +219,67 @@ const UserManagement: React.FC = () => {
 
   const columns = [
     {
+      title: 'ID',
+      dataIndex: 'id',
+      key: 'column-id',
+      width: 160,
+      ellipsis: true,
+      fixed: 'left' as const
+    },
+    {
       title: 'Name',
       dataIndex: 'username',
-      key: 'username',
+      key: 'column-username',
       sorter: true,
+      width: 150,
+      ellipsis: true,
     },
     {
       title: 'Email',
       dataIndex: 'email',
-      key: 'email',
+      key: 'column-email',
       sorter: true,
+      width: 200,
+      ellipsis: true,
     },
     {
       title: 'Role',
       dataIndex: 'role',
-      key: 'role',
-      filters: [
-        { text: 'Admin', value: 'admin' },
-        { text: 'User', value: 'user' },
-      ],
-      render: (role: string) => (
-        <Tag color={getRoleColor(role)} key={role}>
-          {role.toUpperCase()}
+      key: 'column-role',
+      width: 100,
+      filters: Object.values(Role).map(role => ({
+        text: RoleCN[role.toUpperCase() as keyof typeof RoleCN],
+        value: role
+      })),
+      filterMode: 'menu' as const,
+      filterSearch: true,
+      render: (role: Role) => (
+        <Tag color={getRoleColor(role)}>
+          {RoleCN[role.toUpperCase() as keyof typeof RoleCN]}
         </Tag>
-      ),
+      )
     },
     {
       title: 'Created At',
       dataIndex: 'createdAt',
-      key: 'createdAt',
+      key: 'column-createdAt',
       sorter: true,
-      render: (date: string) => new Date(date).toLocaleDateString(),
+      width: 120,
+      render: (date: string) => new Date(date).toLocaleDateString()
     },
     {
       title: 'Actions',
-      key: 'actions',
+      key: 'column-actions',
+      width: 80,
+      align: 'center' as const,
+      fixed: 'right' as const,
       render: (_: any, record: User) => (
-        <Space size="middle">
+        <Space key={`actions-${record.id}`} size="middle">
           <Button
             type="link"
             icon={<EditOutlined />}
             onClick={() => showModal(record)}
+            style={{ padding: 0 }}
           />
           <Popconfirm
             title="Are you sure you want to delete this user?"
@@ -246,15 +288,16 @@ const UserManagement: React.FC = () => {
             cancelText="No"
             placement="topRight"
           >
-            <Button
-              type="link"
-              danger
+            <Button 
+              type="link" 
+              danger 
               icon={<DeleteOutlined />}
+              style={{ padding: 0 }}
             />
           </Popconfirm>
         </Space>
-      ),
-    },
+      )
+    }
   ];
 
   return (
@@ -263,44 +306,44 @@ const UserManagement: React.FC = () => {
         <h1 className="page-title">User Management</h1>
       </div>
 
-      <Row gutter={[24, 24]} style={{ marginBottom: 24 }}>
-        <Col span={8}>
-          <Card>
+      <Row gutter={[24, 24]} style={{ marginBottom: 24 }} key="statistics-row">
+        <Col span={8} key="total-users-col">
+          <Card key="total-users-card" style={{ borderRadius: '8px' }}>
             <Statistic
               title="Total Users"
               value={statistics.totalUsers}
-              prefix={<TeamOutlined style={{ color: '#1890ff' }} />}
+              prefix={<UserOutlined style={{ color: '#1890ff' }} />}
             />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card>
+        <Col span={8} key="admin-users-col">
+          <Card key="admin-users-card" style={{ borderRadius: '8px' }}>
             <Statistic
               title="Admin Users"
               value={statistics.adminUsers}
-              prefix={<IeOutlined style={{ color: '#52c41a' }} />}
+              prefix={<TeamOutlined style={{ color: '#52c41a' }} />}
             />
           </Card>
         </Col>
-        <Col span={8}>
-          <Card>
+        <Col span={8} key="regular-users-col">
+          <Card key="regular-users-card" style={{ borderRadius: '8px' }}>
             <Statistic
               title="Regular Users"
               value={statistics.regularUsers}
-              prefix={<UserOutlined style={{ color: '#faad14' }} />}
+              prefix={<IeOutlined style={{ color: '#faad14' }} />}
             />
           </Card>
         </Col>
       </Row>
 
-      <Card>
+      <Card style={{ borderRadius: '8px' }}>
         <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Search
+          <Input.Search
             placeholder="Search users"
             allowClear
             enterButton={<SearchOutlined />}
             onSearch={handleSearch}
-            style={{ width: 300 }}
+            style={{ width: 300, borderRadius: '6px' }}
             size="large"
           />
           <Button
@@ -308,6 +351,7 @@ const UserManagement: React.FC = () => {
             icon={<PlusOutlined />}
             onClick={() => showModal()}
             size="large"
+            style={{ borderRadius: '6px', height: '40px' }}
           >
             Add User
           </Button>
@@ -322,33 +366,31 @@ const UserManagement: React.FC = () => {
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `Total ${total} items`,
+            style: { marginTop: '16px' }
           }}
-          onChange={handleTableChange}
           loading={loading}
+          onChange={handleTableChange}
+          scroll={{ x: 1200 }}
+          style={{ marginTop: '8px' }}
         />
       </Card>
 
       <Modal
-        title={editingUser ? 'Edit User' : 'Create User'}
+        title={editingUser ? 'Edit User' : 'Add User'}
         open={modalVisible}
         onOk={handleModalOk}
-        onCancel={() => {
-          setModalVisible(false);
-          form.resetFields();
-        }}
+        onCancel={handleModalCancel}
+        destroyOnClose
       >
         <Form
           form={form}
           layout="vertical"
-          initialValues={editingUser || undefined}
+          preserve={false}
         >
           <Form.Item
             name="username"
             label="Username"
-            rules={[
-              { required: true, message: 'Please input username!' },
-              { min: 2, message: 'Username must be at least 2 characters!' }
-            ]}
+            rules={[{ required: true, message: 'Please input username!' }]}
           >
             <Input />
           </Form.Item>
@@ -366,10 +408,7 @@ const UserManagement: React.FC = () => {
             <Form.Item
               name="password"
               label="Password"
-              rules={[
-                { required: true, message: 'Please input password!' },
-                { min: 6, message: 'Password must be at least 6 characters!' }
-              ]}
+              rules={[{ required: true, message: 'Please input password!' }]}
             >
               <Input.Password />
             </Form.Item>
@@ -379,9 +418,12 @@ const UserManagement: React.FC = () => {
             label="Role"
             rules={[{ required: true, message: 'Please select user role!' }]}
           >
-            <Select>
-              <Select.Option value="user">User</Select.Option>
-              <Select.Option value="admin">Admin</Select.Option>
+            <Select size="large">
+              {Object.values(Role).map(role => (
+                <Select.Option key={role as string} value={role}>
+                  {RoleCN[role.toUpperCase() as keyof typeof RoleCN]}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>

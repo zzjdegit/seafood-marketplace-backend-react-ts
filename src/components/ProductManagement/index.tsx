@@ -13,7 +13,8 @@ import {
     Card,
     Row,
     Col,
-    Statistic
+    Statistic,
+    Tag
 } from 'antd';
 import { 
     PlusOutlined, 
@@ -25,7 +26,10 @@ import {
     StockOutlined
 } from '@ant-design/icons';
 import { Product, ProductListParams } from '../../types';
+import { Category, CategoryCN } from '../../types/enums';
 import { getProducts, createProduct, updateProduct, deleteProduct, getProductStatistics } from '../../api/productsApi';
+import { TablePaginationConfig, FilterValue, SorterResult } from 'antd/lib/table/interface';
+
 const { Search } = Input;
 const { Option } = Select;
 
@@ -36,30 +40,43 @@ const ProductManagement: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [searchText, setSearchText] = useState('');
     const [currentCategory, setCurrentCategory] = useState<string | undefined>();
-    const [pagination, setPagination] = useState({
+    const [pagination, setPagination] = useState<{
+        current: number;
+        pageSize: number;
+        total: number;
+    }>({
         current: 1,
         pageSize: 10,
-        total: 0,
+        total: 0
     });
     const [statistics, setStatistics] = useState({ totalStock: 0, averagePrice: 0 });
 
     const [form] = Form.useForm();
 
-    const fetchProducts = async () => {
+    const fetchProducts = async (
+        page = 1,
+        pageSize = 10,
+        search = '',
+        category = '',
+        sortField = 'createdAt',
+        sortOrder: 'ascend' | 'descend' | null = null
+    ) => {
         try {
             setLoading(true);
-            const params: ProductListParams = {
-                page: pagination.current,
-                pageSize: pagination.pageSize,
-                search: searchText,
-                category: currentCategory,
-            };
-            const response = await getProducts(params);
+            const response = await getProducts({
+                page,
+                pageSize,
+                search,
+                category,
+                sortField,
+                sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : null,
+            });
             setProducts(response.data);
-            setPagination(prev => ({
-                ...prev,
+            setPagination({
+                current: page,
+                pageSize,
                 total: response.total,
-            }));
+            });
         } catch (error) {
             console.error('Failed to fetch products:', error);
             message.error('Failed to fetch products');
@@ -77,39 +94,58 @@ const ProductManagement: React.FC = () => {
         }
     };
 
-    const refreshData = async () => {
-        await Promise.all([
-            fetchProducts(),
-            fetchStatistics()
-        ]);
-    };
-
     useEffect(() => {
-        refreshData();
+        fetchProducts();
+        fetchStatistics();
     }, []);
 
-    const handleTableChange = async (pagination: any, filters: any, sorter: any) => {
-        const categoryFilter = filters.category && filters.category.length > 0 ? filters.category[0] : '';
-        setCurrentCategory(categoryFilter);
+    const handleTableChange = async (
+        pagination: TablePaginationConfig,
+        filters: Record<string, FilterValue | null>,
+        sorter: SorterResult<Product> | SorterResult<Product>[],
+    ) => {
+        // Get sort field and order
+        const sortField = Array.isArray(sorter) ? sorter[0]?.field : sorter?.field;
+        const sortOrder = Array.isArray(sorter) ? sorter[0]?.order : sorter?.order;
 
-        const sortField = sorter.field || 'createdAt';
-        let sortOrder: 'ascend' | 'descend' | null = null;
-        if (sorter.order === 'ascend' || sorter.order === 'descend') {
-            sortOrder = sorter.order;
+        // Get category filter - now supports multiple values
+        const category = filters['column-category'] as string[] || [];
+        const price = filters['column-price'] as string[] || [];
+        const stock = filters['column-stock'] as string[] || [];
+
+        setPagination({
+            current: pagination.current || 1,
+            pageSize: pagination.pageSize || 10,
+            total: pagination.total || 0
+        });
+        setCurrentCategory(category.join(','));
+        
+        try {
+            const productsData = await getProducts({
+                page: pagination.current || 1,
+                pageSize: pagination.pageSize || 10,
+                search: searchText,
+                category: category.join(','),
+                price: price[0],
+                stock: stock[0],
+                sortField: sortField as string,
+                sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : '1',
+            });
+            
+            setProducts(productsData.data);
+            setPagination(prev => ({
+                ...prev,
+                total: productsData.total
+            }));
+        } catch (error) {
+            message.error('Failed to fetch data');
         }
-
-        await Promise.all([
-            fetchProducts(),
-            fetchStatistics()
-        ]);
     };
 
-    const handleSearch = async (value: string) => {
+    const handleSearch = (value: string) => {
         setSearchText(value);
-        await Promise.all([
-            fetchProducts(),
-            fetchStatistics()
-        ]);
+        setPagination(prev => ({ ...prev, current: 1 }));
+        fetchProducts(1, pagination.pageSize, value, currentCategory);
     };
 
     const showModal = (product?: Product) => {
@@ -136,7 +172,10 @@ const ProductManagement: React.FC = () => {
             }
             setModalVisible(false);
             form.resetFields();
-            await refreshData();
+            await Promise.all([
+                fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory),
+                fetchStatistics()
+            ]);
         } catch (error) {
             console.error('Failed to save product:', error);
             message.error('Failed to save product');
@@ -155,10 +194,26 @@ const ProductManagement: React.FC = () => {
         try {
             await deleteProduct(id);
             message.success('Product deleted successfully');
-            await refreshData();
+            await Promise.all([
+                fetchProducts(pagination.current, pagination.pageSize, searchText, currentCategory),
+                fetchStatistics()
+            ]);
         } catch (error) {
             console.error('Failed to delete product:', error);
             message.error('Failed to delete product');
+        }
+    };
+
+    const getCategoryColor = (category: Category) => {
+        switch (category) {
+            case Category.FISH:
+                return 'blue';
+            case Category.SHELLFISH:
+                return 'green';
+            case Category.OTHER:
+                return 'default';
+            default:
+                return 'default';
         }
     };
 
@@ -166,7 +221,7 @@ const ProductManagement: React.FC = () => {
         {
             title: 'ID',
             dataIndex: 'id',
-            key: 'id',
+            key: 'column-id',
             width: 220,
             ellipsis: true,
             fixed: 'left' as const
@@ -177,13 +232,14 @@ const ProductManagement: React.FC = () => {
             key: 'column-name',
             sorter: true,
             width: 150,
+            ellipsis: true,
         },
         {
             title: 'Description',
             dataIndex: 'description',
             key: 'column-description',
             ellipsis: true,
-            width: 200,
+            width: 300,
         },
         {
             title: 'Price',
@@ -193,6 +249,12 @@ const ProductManagement: React.FC = () => {
             sorter: true,
             width: 120,
             align: 'right' as const,
+            filterMode: 'menu' as const,
+            filters: [
+                { text: '< $20', value: '0-20' },
+                { text: '$20 - $50', value: '20-50' },
+                { text: '> $50', value: '50-999999' }
+            ]
         },
         {
             title: 'Stock',
@@ -201,33 +263,42 @@ const ProductManagement: React.FC = () => {
             sorter: true,
             width: 120,
             align: 'right' as const,
+            filterMode: 'menu' as const,
+            filters: [
+                { text: 'Out of Stock', value: '0' },
+                { text: 'Low Stock (<50)', value: '1-49' },
+                { text: 'In Stock (≥50)', value: '50-999999' }
+            ]
         },
         {
             title: 'Category',
             dataIndex: 'category',
             key: 'column-category',
             width: 120,
-            filters: [
-                { text: 'Fish', value: 'Fish' },
-                { text: 'Shellfish', value: 'Shellfish' },
-                { text: 'Other', value: 'Other' },
-            ],
+            filters: Object.values(Category).map(category => ({
+                text: CategoryCN[category],
+                value: category as string
+            })),
             filterMode: 'menu' as const,
             filterSearch: true,
-            onFilter: (value: any, record: Product) => record.category === value,
+            render: (category: Category) => (
+                <Tag color={getCategoryColor(category)}>
+                    {CategoryCN[category]}
+                </Tag>
+            )
         },
         {
             title: 'Actions',
             key: 'column-actions',
-            width: 200,
+            width: 100,
             align: 'center' as const,
+            fixed: 'right' as const,
             render: (_: any, record: Product) => (
                 <Space key={`actions-${record.id}`} size="middle">
                     <Button
                         type="link"
                         icon={<EditOutlined />}
                         onClick={() => showModal(record)}
-                        size="middle"
                         style={{ padding: 0 }}
                     />
                     <Popconfirm
@@ -241,13 +312,12 @@ const ProductManagement: React.FC = () => {
                             type="link" 
                             danger 
                             icon={<DeleteOutlined />}
-                            size="middle"
                             style={{ padding: 0 }}
                         />
                     </Popconfirm>
                 </Space>
-            ),
-        },
+            )
+        }
     ];
 
     return (
@@ -374,9 +444,11 @@ const ProductManagement: React.FC = () => {
                         rules={[{ required: true, message: 'Please select product category!' }]}
                     >
                         <Select size="large">
-                            <Option value="Fish">Fish</Option>
-                            <Option value="Shellfish">Shellfish</Option>
-                            <Option value="Other">Other</Option>
+                            {Object.values(Category).map(category => (
+                                <Option key={category as string} value={category}>
+                                    {CategoryCN[category]}
+                                </Option>
+                            ))}
                         </Select>
                     </Form.Item>
                     <Form.Item

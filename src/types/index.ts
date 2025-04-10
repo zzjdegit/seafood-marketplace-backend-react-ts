@@ -1,3 +1,5 @@
+import { Category } from "./enums";
+
 // API Response types
 export interface ApiResponse<T> {
   data: T[];
@@ -25,7 +27,7 @@ export interface User {
 }
 
 export interface UserListParams extends ListParams {
-  role?: 'admin' | 'user';
+  role?: string;
 }
 
 export interface UserStatistics {
@@ -41,11 +43,16 @@ export interface Product {
   description: string;
   price: number;
   stock: number;
-  category: string;
+  category: Category;
+  imageUrl?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface ProductListParams extends ListParams {
   category?: string;
+  price?: string;
+  stock?: string;
 }
 
 export interface ProductStatistics {
