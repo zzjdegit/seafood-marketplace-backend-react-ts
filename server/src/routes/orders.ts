@@ -2,6 +2,8 @@ import express from 'express';
 import Order from '../models/Order';
 import Product from '../models/Product';
 import mongoose from 'mongoose';
+import { Request, Response } from 'express';
+import { SortOrder } from 'mongoose';
 
 const router = express.Router();
 
@@ -35,13 +37,12 @@ router.get('/statistics', async (req, res) => {
 
     res.json(stats[0] || { totalOrders: 0, completedOrders: 0, totalRevenue: 0 });
   } catch (error) {
-    console.error('Error fetching order statistics:', error);
     res.status(500).json({ message: 'Error fetching order statistics' });
   }
 });
 
 // Get all orders with pagination, search, and sorting
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const {
       page = 1,
@@ -49,47 +50,49 @@ router.get('/', async (req, res) => {
       search = '',
       status = '',
       sortField = 'createdAt',
-      sortOrder = 'desc'
+      sortOrder = '1'
     } = req.query;
 
     const query: any = {};
     
-    // Add search filter
-    if (search) {
+    // Add search condition if provided
+    if (search && typeof search === 'string') {
       query.$or = [
-        { 'product.name': { $regex: search, $options: 'i' } },
         { status: { $regex: search, $options: 'i' } }
       ];
+
+      // If search term looks like an ObjectId, add it to the search
+      if (mongoose.Types.ObjectId.isValid(search)) {
+        query.$or.push({ _id: new mongoose.Types.ObjectId(search) });
+      }
     }
 
-    // Add status filter
+    // Add status filter if provided
     if (status) {
-      query.status = status;
+      // Handle both single status and multiple statuses
+      const statuses = Array.isArray(status) ? status : (typeof status === 'string' ? status.split(',') : []);
+      query.status = { $in: statuses };
     }
 
     // Create sort object
     const sort: any = {};
-    sort[sortField as string] = sortOrder === 'desc' ? -1 : 1;
-
-    const skip = (Number(page) - 1) * Number(pageSize);
+    if (sortField) {
+      sort[sortField as string] = parseInt(sortOrder as string);
+    }
     
-    const [orders, total] = await Promise.all([
-      Order.find(query)
-        .sort(sort)
-        .skip(skip)
-        .limit(Number(pageSize))
-        .populate('product'),
-      Order.countDocuments(query)
-    ]);
+    const orders = await Order.find(query)
+      .populate('product')
+      .sort(sort)
+      .skip((Number(page) - 1) * Number(pageSize))
+      .limit(Number(pageSize));
+
+    const total = await Order.countDocuments(query);
 
     res.json({
       data: orders,
-      total,
-      page: Number(page),
-      pageSize: Number(pageSize)
+      total
     });
   } catch (error) {
-    console.error('Error fetching orders:', error);
     res.status(500).json({ message: 'Error fetching orders' });
   }
 });
@@ -118,7 +121,6 @@ router.post('/', async (req, res) => {
     await order.populate('product');
     res.status(201).json(order);
   } catch (error: any) {
-    console.error('Error creating order:', error);
     res.status(400).json({ message: 'Error creating order', error: error.message });
   }
 });
@@ -139,27 +141,33 @@ router.get('/:id', async (req, res) => {
 
     res.json(order);
   } catch (error) {
-    console.error('Error fetching order:', error);
     res.status(500).json({ message: 'Error fetching order' });
   }
 });
 
 // Update order
-router.patch('/:id', async (req, res) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
+    const { id } = req.params;
+    const updateData = req.body;
+
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: 'Invalid order ID' });
+    }
+
     const order = await Order.findByIdAndUpdate(
-      req.params.id,
-      { $set: req.body },
-      { new: true }
+      id,
+      { $set: updateData },
+      { new: true, runValidators: true }
     ).populate('product');
-    
+
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
     }
-    
+
     res.json(order);
   } catch (error) {
-    console.error('Error updating order:', error);
     res.status(400).json({ message: 'Error updating order' });
   }
 });
@@ -175,7 +183,6 @@ router.delete('/:id', async (req, res) => {
     
     res.status(204).send();
   } catch (error) {
-    console.error('Error deleting order:', error);
     res.status(400).json({ message: 'Error deleting order' });
   }
 });

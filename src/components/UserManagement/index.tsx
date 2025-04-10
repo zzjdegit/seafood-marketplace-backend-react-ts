@@ -147,18 +147,26 @@ const UserManagement: React.FC = () => {
   const handleModalOk = async () => {
     try {
       const values = await form.validateFields();
-      
       if (editingUser) {
-        await updateUser(editingUser.id, values);
+        const updateData = { ...values };
+        delete updateData.password;
+        await updateUser(editingUser.id, updateData);
         message.success('User updated successfully');
       } else {
-        await createUser(values);
+        const userData = {
+          username: values.username.trim(),
+          email: values.email.trim(),
+          password: values.password,
+          role: values.role || 'user',
+        };
+        await createUser(userData);
         message.success('User created successfully');
       }
       setModalVisible(false);
+      form.resetFields();
       await refreshData();
-    } catch (error) {
-      message.error('Operation failed');
+    } catch (error: any) {
+      message.error(error?.response?.data?.message || 'Operation failed');
     }
   };
 
@@ -190,8 +198,8 @@ const UserManagement: React.FC = () => {
   const columns = [
     {
       title: 'Name',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'username',
+      key: 'username',
       sorter: true,
     },
     {
@@ -321,11 +329,13 @@ const UserManagement: React.FC = () => {
       </Card>
 
       <Modal
-        title={editingUser ? "Edit User" : "Add User"}
+        title={editingUser ? 'Edit User' : 'Create User'}
         open={modalVisible}
         onOk={handleModalOk}
-        onCancel={handleModalCancel}
-        width={600}
+        onCancel={() => {
+          setModalVisible(false);
+          form.resetFields();
+        }}
       >
         <Form
           form={form}
@@ -333,11 +343,14 @@ const UserManagement: React.FC = () => {
           initialValues={editingUser || undefined}
         >
           <Form.Item
-            name="name"
-            label="Name"
-            rules={[{ required: true, message: 'Please input name!' }]}
+            name="username"
+            label="Username"
+            rules={[
+              { required: true, message: 'Please input username!' },
+              { min: 2, message: 'Username must be at least 2 characters!' }
+            ]}
           >
-            <Input size="large" />
+            <Input />
           </Form.Item>
           <Form.Item
             name="email"
@@ -347,24 +360,26 @@ const UserManagement: React.FC = () => {
               { type: 'email', message: 'Please input a valid email!' }
             ]}
           >
-            <Input size="large" />
+            <Input />
           </Form.Item>
-          <Form.Item
-            name="password"
-            label="Password"
-            rules={[
-              { required: !editingUser, message: 'Please input password!' },
-              { min: 6, message: 'Password must be at least 6 characters!' }
-            ]}
-          >
-            <Input.Password size="large" />
-          </Form.Item>
+          {!editingUser && (
+            <Form.Item
+              name="password"
+              label="Password"
+              rules={[
+                { required: true, message: 'Please input password!' },
+                { min: 6, message: 'Password must be at least 6 characters!' }
+              ]}
+            >
+              <Input.Password />
+            </Form.Item>
+          )}
           <Form.Item
             name="role"
             label="Role"
-            rules={[{ required: true, message: 'Please select role!' }]}
+            rules={[{ required: true, message: 'Please select user role!' }]}
           >
-            <Select size="large">
+            <Select>
               <Select.Option value="user">User</Select.Option>
               <Select.Option value="admin">Admin</Select.Option>
             </Select>

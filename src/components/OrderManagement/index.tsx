@@ -26,9 +26,10 @@ import {
     CheckCircleOutlined
 } from '@ant-design/icons';
 import { createOrder, deleteOrder, getOrders, updateOrder, getOrderStatistics } from '../../api/ordersApi';
-import { Order } from '../../types';
+import { Order, Product } from '../../types';
 import { getProducts } from '../../api/productsApi';
-const { Search } = Input;
+import { OrderStatus, OrderStatusCN } from '../../types/enums';
+import { TablePaginationConfig, FilterValue, SorterResult } from 'antd/lib/table/interface';
 
 const OrderManagement: React.FC = () => {
     const [orders, setOrders] = useState<Order[]>([]);
@@ -37,11 +38,15 @@ const OrderManagement: React.FC = () => {
     const [editingOrder, setEditingOrder] = useState<Order | null>(null);
     const [searchText, setSearchText] = useState('');
     const [currentStatus, setCurrentStatus] = useState('');
-    const [products, setProducts] = useState<any[]>([]);
-    const [pagination, setPagination] = useState({
+    const [products, setProducts] = useState<Product[]>([]);
+    const [pagination, setPagination] = useState<{
+        current: number;
+        pageSize: number;
+        total: number;
+    }>({
         current: 1,
         pageSize: 10,
-        total: 0,
+        total: 0
     });
     const [statistics, setStatistics] = useState({
         totalOrders: 0,
@@ -65,9 +70,9 @@ const OrderManagement: React.FC = () => {
                 page,
                 pageSize,
                 search,
-                status: status as any,
+                status,
                 sortField,
-                sortOrder,
+                sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : '1',
             });
             setOrders(response.data);
             setPagination({
@@ -110,33 +115,52 @@ const OrderManagement: React.FC = () => {
         fetchStatistics();
     }, []);
 
-    const handleTableChange = (pagination: any, filters: any, sorter: any) => {
-        console.log('Table change:', { pagination, filters, sorter });
-        const statusFilter = filters.status && filters.status.length > 0 ? filters.status[0] : '';
-        setCurrentStatus(statusFilter);
+    const handleTableChange = async (
+        pagination: TablePaginationConfig,
+        filters: Record<string, FilterValue | null>,
+        sorter: SorterResult<Order> | SorterResult<Order>[],
+    ) => {
+        // Get sort field and order
+        const sortField = Array.isArray(sorter) ? sorter[0]?.field : sorter?.field;
+        const sortOrder = Array.isArray(sorter) ? sorter[0]?.order : sorter?.order;
 
-        const sortField = sorter.field || 'createdAt';
-        let sortOrder: 'ascend' | 'descend' | null = null;
-        if (sorter.order === 'ascend' || sorter.order === 'descend') {
-            sortOrder = sorter.order;
+        // Get status filter - now supports multiple values
+        const status = filters['column-status'] as string[] || [];
+
+        setPagination({
+            current: pagination.current || 1,
+            pageSize: pagination.pageSize || 10,
+            total: pagination.total || 0
+        });
+        setCurrentStatus(status.join(','));
+        
+        try {
+          const ordersData = await getOrders({
+            page: pagination.current || 1,
+            pageSize: pagination.pageSize || 10,
+            search: searchText,
+            status: status.join(','),
+            sortField: sortField as string,
+            sortOrder: sortOrder === 'ascend' ? '1' : sortOrder === 'descend' ? '-1' : '1',
+          });
+          
+          setOrders(ordersData.data);
+          setPagination(prev => ({
+              ...prev,
+              total: ordersData.total
+          }));
+        } catch (error) {
+            message.error('Failed to fetch data');
         }
-
-        fetchOrders(
-            pagination.current,
-            pagination.pageSize,
-            searchText,
-            statusFilter,
-            sortField,
-            sortOrder
-        );
     };
 
     const handleSearch = (value: string) => {
         setSearchText(value);
+        setPagination(prev => ({ ...prev, current: 1 }));
         fetchOrders(1, pagination.pageSize, value, currentStatus);
     };
 
-    const showModal = (order?: Order) => {
+    const showModal = (order?: Order & { productId?: string }) => {
         if (order) {
             setEditingOrder(order);
             form.setFieldsValue(order);
@@ -151,6 +175,12 @@ const OrderManagement: React.FC = () => {
         try {
             const values = await form.validateFields();
             const selectedProduct = products.find(p => p.id === values.productId);
+            
+            if (!selectedProduct) {
+                message.error('Product not found');
+                return;
+            }
+
             const totalPrice = selectedProduct.price * values.quantity;
 
             if (editingOrder) {
@@ -187,7 +217,6 @@ const OrderManagement: React.FC = () => {
                 fetchStatistics()
             ]);
         } catch (error) {
-            console.error('Delete error:', error);
             message.error('Failed to delete order');
         }
     };
@@ -210,17 +239,16 @@ const OrderManagement: React.FC = () => {
             title: 'ID',
             dataIndex: 'id',
             key: 'column-id',
-            width: 220,
+            width: 160,
             ellipsis: true,
         },
         {
             title: 'Product',
-            dataIndex: 'productId',
+            dataIndex: 'product',
             key: 'column-product',
-            width: 150,
-            render: (productId: string) => {
-                const product = products.find(p => p.id === productId);
-                return product ? product.name : productId;
+            width: 250,
+            render: (product: Product) => {
+                return `${product.name} - ${product.price}`;
             },
         },
         {
@@ -235,7 +263,7 @@ const OrderManagement: React.FC = () => {
             title: 'Total Price',
             dataIndex: 'totalPrice',
             key: 'column-price',
-            width: 120,
+            width: 100,
             align: 'right' as const,
             render: (price: number) => `$${price.toFixed(2)}`,
             sorter: true,
@@ -244,29 +272,32 @@ const OrderManagement: React.FC = () => {
             title: 'Status',
             dataIndex: 'status',
             key: 'column-status',
-            width: 120,
+            width: 80,
             filters: [
-                { text: 'Pending', value: 'pending' },
-                { text: 'Completed', value: 'completed' },
-                { text: 'Canceled', value: 'canceled' },
+                { text: OrderStatusCN.PENDING, value: OrderStatus.PENDING },
+                { text: OrderStatusCN.PROCESSING, value: OrderStatus.PROCESSING },
+                { text: OrderStatusCN.COMPLETED, value: OrderStatus.COMPLETED },
+                { text: OrderStatusCN.CANCELLED, value: OrderStatus.CANCELLED },
             ],
-            render: (status: string) => (
-                <Tag color={getStatusColor(status)} key={status}>
-                    {status.toUpperCase()}
+            render: (status: string) => {
+                const key = status.toLocaleUpperCase() as keyof typeof OrderStatusCN;
+                return <Tag color={getStatusColor(status)} key={status}>
+                    {OrderStatusCN[key]}
                 </Tag>
-            ),
+            },
         },
         {
             title: 'Actions',
             key: 'column-actions',
-            width: 150,
+            width: 80,
             align: 'center' as const,
+            fixed: 'right' as const,
             render: (_: any, record: Order) => (
                 <Space key={`actions-${record.id}`} size="middle">
                     <Button
                         type="link"
                         icon={<EditOutlined />}
-                        onClick={() => showModal(record)}
+                        onClick={() => showModal({ ...record, productId: record.product.id })}
                     />
                     <Popconfirm
                         title="Are you sure you want to delete this order?"
@@ -286,134 +317,135 @@ const OrderManagement: React.FC = () => {
         },
     ];
 
-    return (
-        <div>
-            <div className="page-header">
-                <h1 className="page-title">Order Management</h1>
-            </div>
+  return (
+      <div>
+          <div className="page-header">
+              <h1 className="page-title">Order Management</h1>
+          </div>
 
-            <Row gutter={[24, 24]} style={{ marginBottom: 24 }} key="statistics-row">
-                <Col span={8} key="total-orders-col">
-                    <Card key="total-orders-card" style={{ borderRadius: '8px' }}>
-                        <Statistic
-                            title="Total Orders"
-                            value={statistics.totalOrders}
-                            prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col span={8} key="completed-orders-col">
-                    <Card key="completed-orders-card" style={{ borderRadius: '8px' }}>
-                        <Statistic
-                            title="Completed Orders"
-                            value={statistics.completedOrders}
-                            prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
-                        />
-                    </Card>
-                </Col>
-                <Col span={8} key="total-revenue-col">
-                    <Card key="total-revenue-card" style={{ borderRadius: '8px' }}>
-                        <Statistic
-                            title="Total Revenue"
-                            value={statistics.totalRevenue}
-                            prefix={<DollarOutlined style={{ color: '#faad14' }} />}
-                            precision={2}
-                        />
-                    </Card>
-                </Col>
-            </Row>
+          <Row gutter={[24, 24]} style={{ marginBottom: 24 }} key="statistics-row">
+              <Col span={8} key="total-orders-col">
+                  <Card key="total-orders-card" style={{ borderRadius: '8px' }}>
+                      <Statistic
+                          title="Total Orders"
+                          value={statistics.totalOrders}
+                          prefix={<ShoppingOutlined style={{ color: '#1890ff' }} />}
+                      />
+                  </Card>
+              </Col>
+              <Col span={8} key="completed-orders-col">
+                  <Card key="completed-orders-card" style={{ borderRadius: '8px' }}>
+                      <Statistic
+                          title="Completed Orders"
+                          value={statistics.completedOrders}
+                          prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+                      />
+                  </Card>
+              </Col>
+              <Col span={8} key="total-revenue-col">
+                  <Card key="total-revenue-card" style={{ borderRadius: '8px' }}>
+                      <Statistic
+                          title="Total Revenue"
+                          value={statistics.totalRevenue}
+                          prefix={<DollarOutlined style={{ color: '#faad14' }} />}
+                          precision={2}
+                      />
+                  </Card>
+              </Col>
+          </Row>
 
-            <Card style={{ borderRadius: '8px' }}>
-                <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Search
-                        placeholder="Search orders"
-                        allowClear
-                        enterButton={<SearchOutlined />}
-                        onSearch={handleSearch}
-                        style={{ width: 300, borderRadius: '6px' }}
-                        size="large"
-                    />
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        onClick={() => showModal()}
-                        size="large"
-                        style={{ borderRadius: '6px', height: '40px' }}
-                    >
-                        Add Order
-                    </Button>
-                </div>
+          <Card style={{ borderRadius: '8px' }}>
+              <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Input.Search
+                      placeholder="Search orders"
+                      allowClear
+                      enterButton={<SearchOutlined />}
+                      onSearch={handleSearch}
+                      style={{ width: 300, borderRadius: '6px' }}
+                      size="large"
+                  />
+                  <Button
+                      type="primary"
+                      icon={<PlusOutlined />}
+                      onClick={() => showModal()}
+                      size="large"
+                      style={{ borderRadius: '6px', height: '40px' }}
+                  >
+                      Add Order
+                  </Button>
+              </div>
 
-                <Table
-                    columns={columns}
-                    dataSource={orders}
-                    rowKey={(record) => record.id}
-                    pagination={{
-                        ...pagination,
-                        showSizeChanger: true,
-                        showQuickJumper: true,
-                        showTotal: (total) => `Total ${total} items`,
-                        style: { marginTop: '16px' }
-                    }}
-                    onChange={handleTableChange}
-                    loading={loading}
-                    scroll={{ x: 1200 }}
-                    style={{ marginTop: '8px' }}
-                />
-            </Card>
+              <Table
+                  columns={columns}
+                  dataSource={orders}
+                  rowKey={(record) => record.id}
+                  pagination={{
+                      ...pagination,
+                      showSizeChanger: true,
+                      showQuickJumper: true,
+                      showTotal: (total) => `Total ${total} items`,
+                      style: { marginTop: '16px' }
+                  }}
+                  onChange={handleTableChange}
+                  loading={loading}
+                  scroll={{ x: 1200 }}
+                  style={{ marginTop: '8px' }}
+              />
+          </Card>
 
-            <Modal
-                title={editingOrder ? "Edit Order" : "Add Order"}
-                open={modalVisible}
-                onOk={handleModalOk}
-                onCancel={handleModalCancel}
-                width={600}
-                style={{ borderRadius: '8px' }}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    initialValues={editingOrder || undefined}
-                >
-                    <Form.Item
-                        name="productId"
-                        label="Product"
-                        rules={[{ required: true, message: 'Please select a product!' }]}
-                    >
-                        <Select size="large">
-                            {products.map(product => (
-                                <Select.Option key={product.id} value={product.id}>
-                                    {product.name} - ${product.price}
-                                </Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                    <Form.Item
-                        name="quantity"
-                        label="Quantity"
-                        rules={[{ required: true, message: 'Please input quantity!' }]}
-                    >
-                        <InputNumber
-                            min={1}
-                            style={{ width: '100%' }}
-                            size="large"
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        name="status"
-                        label="Status"
-                        rules={[{ required: true, message: 'Please select a status!' }]}
-                    >
-                        <Select size="large">
-                            <Select.Option value="pending">Pending</Select.Option>
-                            <Select.Option value="completed">Completed</Select.Option>
-                            <Select.Option value="canceled">Canceled</Select.Option>
-                        </Select>
-                    </Form.Item>
-                </Form>
-            </Modal>
-        </div>
-    );
+          <Modal
+            title={editingOrder ? "Edit Order" : "Add Order"}
+            open={modalVisible}
+            onOk={handleModalOk}
+            onCancel={handleModalCancel}
+            width={600}
+            style={{ borderRadius: '8px' }}
+          >
+              <Form
+                  form={form}
+                  layout="vertical"
+                  initialValues={editingOrder || undefined}
+              >
+                  <Form.Item
+                      name="productId"
+                      label="Product"
+                      rules={[{ required: true, message: 'Please select a product!' }]}
+                  >
+                      <Select size="large">
+                          {products.map(product => (
+                              <Select.Option key={product.id} value={product.id}>
+                                  {product.name} - ${product.price}
+                              </Select.Option>
+                          ))}
+                      </Select>
+                  </Form.Item>
+                  <Form.Item
+                      name="quantity"
+                      label="Quantity"
+                      rules={[{ required: true, message: 'Please input quantity!' }]}
+                  >
+                      <InputNumber
+                          min={1}
+                          style={{ width: '100%' }}
+                          size="large"
+                      />
+                  </Form.Item>
+                  <Form.Item
+                      name="status"
+                      label="Status"
+                      rules={[{ required: true, message: 'Please select a status!' }]}
+                  >
+                      <Select size="large">
+                          <Select.Option value={OrderStatus.PENDING}>{OrderStatusCN.PENDING}</Select.Option>
+                          <Select.Option value={OrderStatus.PROCESSING}>{OrderStatusCN.PROCESSING}</Select.Option>
+                          <Select.Option value={OrderStatus.COMPLETED}>{OrderStatusCN.COMPLETED}</Select.Option>
+                          <Select.Option value={OrderStatus.CANCELLED}>{OrderStatusCN.CANCELLED}</Select.Option>
+                      </Select>
+                  </Form.Item>
+              </Form>
+          </Modal>
+      </div>
+  );
 };
 
 export default OrderManagement;

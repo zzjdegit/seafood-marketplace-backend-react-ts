@@ -12,7 +12,7 @@ export interface ListParams {
   pageSize: number;
   search?: string;
   sortField?: string;
-  sortOrder?: 'ascend' | 'descend' | null;
+  sortOrder?: '-1' | '1' | null;
 }
 
 // User types
@@ -69,7 +69,7 @@ export interface Order {
 }
 
 export interface OrderListParams extends ListParams {
-  status?: 'pending' | 'processing' | 'completed' | 'cancelled';
+  status?: string;
 }
 
 export interface OrderStatistics {
@@ -77,15 +77,3 @@ export interface OrderStatistics {
   completedOrders: number;
   totalRevenue: number;
 }
-
-// Remove duplicate interfaces
-// export interface PaginatedResponse<T> {
-//   items: T[];
-//   total: number;
-// }
-
-// export interface PaginationParams {
-//   page: number;
-//   pageSize: number;
-//   searchText?: string;
-// }

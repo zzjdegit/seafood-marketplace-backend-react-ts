@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
     // Add search filter
     if (search) {
       query.$or = [
-        { name: { $regex: search, $options: 'i' } },
+        { username: { $regex: search, $options: 'i' } },
         { email: { $regex: search, $options: 'i' } }
       ];
     }
@@ -99,7 +99,7 @@ router.get('/', async (req, res) => {
 // Create new user
 router.post('/', async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { username, email, password, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -112,7 +112,7 @@ router.post('/', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const user = new User({
-      name,
+      username,
       email,
       password: hashedPassword,
       role: role || 'user'
@@ -151,14 +151,14 @@ router.get('/:id', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, password, role } = req.body;
+    const { username, email, password, role } = req.body;
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return res.status(400).json({ message: 'Invalid user ID' });
     }
 
     const updateData: any = {};
-    if (name) updateData.name = name;
+    if (username) updateData.username = username;
     if (email) updateData.email = email;
     if (role) updateData.role = role;
     

@@ -7,7 +7,7 @@ dotenv.config();
 
 const users = [
   {
-    name: "John Doe",
+    username: "John Doe",
     email: "john.doe@example.com",
     password: "password123",
     role: "user",
@@ -15,7 +15,7 @@ const users = [
     phone: "617-555-0101"
   },
   {
-    name: "Jane Smith",
+    username: "Jane Smith",
     email: "jane.smith@example.com",
     password: "password123",
     role: "user",
@@ -23,7 +23,7 @@ const users = [
     phone: "212-555-0102"
   },
   {
-    name: "Admin User",
+    username: "Admin User",
     email: "admin@seafood.com",
     password: "admin123",
     role: "admin",
@@ -31,7 +31,7 @@ const users = [
     phone: "305-555-0103"
   },
   {
-    name: "Seafood Lover",
+    username: "Seafood Lover",
     email: "seafood.lover@example.com",
     password: "password123",
     role: "user",
@@ -39,7 +39,7 @@ const users = [
     phone: "619-555-0104"
   },
   {
-    name: "Fish Market",
+    username: "Fish Market",
     email: "market@example.com",
     password: "password123",
     role: "user",
@@ -47,7 +47,7 @@ const users = [
     phone: "206-555-0105"
   },
   {
-    name: "Chef Gordon",
+    username: "Chef Gordon",
     email: "chef.gordon@example.com",
     password: "password123",
     role: "user",
@@ -55,7 +55,7 @@ const users = [
     phone: "312-555-0106"
   },
   {
-    name: "Mary Wilson",
+    username: "Mary Wilson",
     email: "mary.wilson@example.com",
     password: "password123",
     role: "user",
@@ -63,7 +63,7 @@ const users = [
     phone: "503-555-0107"
   },
   {
-    name: "Fresh Catch",
+    username: "Fresh Catch",
     email: "fresh.catch@example.com",
     password: "password123",
     role: "user",
@@ -71,7 +71,7 @@ const users = [
     phone: "410-555-0108"
   },
   {
-    name: "Sarah Chen",
+    username: "Sarah Chen",
     email: "sarah.chen@example.com",
     password: "password123",
     role: "user",
@@ -79,7 +79,7 @@ const users = [
     phone: "415-555-0109"
   },
   {
-    name: "Mike Brown",
+    username: "Mike Brown",
     email: "mike.brown@example.com",
     password: "password123",
     role: "user",
@@ -87,7 +87,7 @@ const users = [
     phone: "504-555-0110"
   },
   {
-    name: "Seafood Wholesale",
+    username: "Seafood Wholesale",
     email: "wholesale@example.com",
     password: "password123",
     role: "user",
@@ -95,7 +95,7 @@ const users = [
     phone: "713-555-0111"
   },
   {
-    name: "Lisa Garcia",
+    username: "Lisa Garcia",
     email: "lisa.garcia@example.com",
     password: "password123",
     role: "user",
@@ -103,7 +103,7 @@ const users = [
     phone: "813-555-0112"
   },
   {
-    name: "Ocean Delights",
+    username: "Ocean Delights",
     email: "ocean.delights@example.com",
     password: "password123",
     role: "user",
@@ -111,7 +111,7 @@ const users = [
     phone: "843-555-0113"
   },
   {
-    name: "David Kim",
+    username: "David Kim",
     email: "david.kim@example.com",
     password: "password123",
     role: "user",
@@ -119,7 +119,7 @@ const users = [
     phone: "718-555-0114"
   },
   {
-    name: "Fresh Fish Daily",
+    username: "Fresh Fish Daily",
     email: "fresh.fish@example.com",
     password: "password123",
     role: "user",
@@ -127,7 +127,7 @@ const users = [
     phone: "617-555-0115"
   },
   {
-    name: "Emma White",
+    username: "Emma White",
     email: "emma.white@example.com",
     password: "password123",
     role: "user",
@@ -135,7 +135,7 @@ const users = [
     phone: "512-555-0116"
   },
   {
-    name: "Coastal Market",
+    username: "Coastal Market",
     email: "coastal.market@example.com",
     password: "password123",
     role: "user",
@@ -143,7 +143,7 @@ const users = [
     phone: "757-555-0117"
   },
   {
-    name: "Tom Wilson",
+    username: "Tom Wilson",
     email: "tom.wilson@example.com",
     password: "password123",
     role: "user",
@@ -151,7 +151,7 @@ const users = [
     phone: "312-555-0118"
   },
   {
-    name: "Pacific Seafood",
+    username: "Pacific Seafood",
     email: "pacific.seafood@example.com",
     password: "password123",
     role: "user",
@@ -159,7 +159,7 @@ const users = [
     phone: "213-555-0119"
   },
   {
-    name: "Anna Martinez",
+    username: "Anna Martinez",
     email: "anna.martinez@example.com",
     password: "password123",
     role: "user",
