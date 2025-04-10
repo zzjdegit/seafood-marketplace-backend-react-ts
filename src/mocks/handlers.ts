@@ -1,30 +1,36 @@
-import { http, HttpResponse } from 'msw';
+import { rest } from 'msw';
 
 export const handlers = [
   // User API mocks
-  http.get('/api/users/statistics', () => {
-    return HttpResponse.json({
-      totalUsers: 100,
-      adminUsers: 20,
-      regularUsers: 80,
-    });
+  rest.get('/api/users/statistics', (req, res, ctx) => {
+    return res(
+      ctx.json({
+        totalUsers: 100,
+        adminUsers: 20,
+        regularUsers: 80,
+      })
+    );
   }),
 
   // Product API mocks
-  http.get('/api/products/statistics', () => {
-    return HttpResponse.json({
-      totalProducts: 50,
-      totalStock: 1000,
-      averagePrice: 29.99,
-    });
+  rest.get('/api/products/statistics', (req, res, ctx) => {
+    return res(
+      ctx.json({
+        totalProducts: 50,
+        totalStock: 1000,
+        averagePrice: 29.99,
+      })
+    );
   }),
 
   // Order API mocks
-  http.get('/api/orders/statistics', () => {
-    return HttpResponse.json({
-      totalOrders: 200,
-      completedOrders: 150,
-      totalRevenue: 5999.99,
-    });
+  rest.get('/api/orders/statistics', (req, res, ctx) => {
+    return res(
+      ctx.json({
+        totalOrders: 200,
+        completedOrders: 150,
+        totalRevenue: 5999.99,
+      })
+    );
   }),
 ]; 
