@@ -23,16 +23,16 @@
         <div class='clearfix'>
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">46.15% </span>
+                <span class="strong">56.41% </span>
                 <span class="quiet">Statements</span>
-                <span class='fraction'>18/39</span>
+                <span class='fraction'>22/39</span>
             </div>
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">58.33% </span>
                 <span class="quiet">Branches</span>
-                <span class='fraction'>6/12</span>
+                <span class='fraction'>7/12</span>
             </div>
         
             
@@ -44,9 +44,9 @@
         
             
             <div class='fl pad1y space-right2'>
-                <span class="strong">50% </span>
+                <span class="strong">57.69% </span>
                 <span class="quiet">Lines</span>
-                <span class='fraction'>13/26</span>
+                <span class='fraction'>15/26</span>
             </div>
         
             
@@ -61,7 +61,7 @@
             </div>
         </template>
     </div>
-    <div class='status-line low'></div>
+    <div class='status-line medium'></div>
     <pre><table class="coverage">
 <tr><td class="line-count quiet"><a name='L1'></a><a href='#L1'>1</a>
 <a name='L2'></a><a href='#L2'>2</a>
@@ -144,22 +144,22 @@
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
-<span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-neutral">&nbsp;</span>
+<span class="cline-any cline-yes">9x</span>
+<span class="cline-any cline-yes">9x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -168,7 +168,7 @@
 <span class="cline-any cline-yes">10x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-yes">8x</span>
-<span class="cline-any cline-no">&nbsp;</span>
+<span class="cline-any cline-yes">8x</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
 <span class="cline-any cline-no">&nbsp;</span>
 <span class="cline-any cline-neutral">&nbsp;</span>
@@ -214,7 +214,7 @@ export const getOrders = async (params: {
     sortOrder?: string;
 }): Promise&lt;{ data: Order[]; total: number }&gt; =&gt; {
     try {
-        const { page = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> pageSize = <span class="branch-0 cbranch-no" title="branch not covered" >10,</span> search = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> status = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> sortField = <span class="branch-0 cbranch-no" title="branch not covered" >'createdAt',</span> sortOrder = <span class="branch-0 cbranch-no" title="branch not covered" >'1' </span>} = params;
+        const { page = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> pageSize = <span class="branch-0 cbranch-no" title="branch not covered" >10,</span> search = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> status = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> sortField = 'createdAt', sortOrder = <span class="branch-0 cbranch-no" title="branch not covered" >'1' </span>} = params;
         
         // Build query parameters
         const queryParams = new URLSearchParams({
@@ -226,8 +226,8 @@ export const getOrders = async (params: {
             sortOrder
         });
 &nbsp;
-        const <span class="cstat-no" title="statement not covered" >response = await axios.get(`${BASE_URL}?${queryParams.toString()}`);</span>
-<span class="cstat-no" title="statement not covered" >        return response.data;</span>
+        const response = await axios.get(`${BASE_URL}?${queryParams.toString()}`);
+        return response.data;
     } catch (error) {
 <span class="cstat-no" title="statement not covered" >        throw error;</span>
     }
@@ -235,8 +235,8 @@ export const getOrders = async (params: {
 &nbsp;
 export const getOrderStatistics = async (): Promise&lt;OrderStatistics&gt; =&gt; {
   try {
-    const <span class="cstat-no" title="statement not covered" >response = await axios.get(`${BASE_URL}/statistics`);</span>
-<span class="cstat-no" title="statement not covered" >    return response.data;</span>
+    const response = await axios.get(`${BASE_URL}/statistics`);
+    return response.data;
   } catch (error) {
 <span class="cstat-no" title="statement not covered" >    throw error;</span>
   }
@@ -274,7 +274,7 @@ export const deleteOrder = <span class="fstat-no" title="function not covered" >
             <div class='footer quiet pad2 space-top1 center small'>
                 Code coverage generated by
                 <a href="https://istanbul.js.org/" target="_blank" rel="noopener noreferrer">istanbul</a>
-                at 2025-04-10T06:42:07.749Z
+                at 2025-04-10T06:46:08.004Z
             </div>
         <script src="../../prettify.js"></script>
         <script>

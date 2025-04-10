@@ -163,7 +163,7 @@ const Dashboard: React.FC = () => {
       {/* 统计卡片行 */}
       <Row gutter={[16, 16]}>
         <Col span={8}>
-          <Card>
+          <Card loading={loading}>
             <Statistic
               title="Total Users"
               value={userStats.totalUsers}
@@ -172,7 +172,7 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card>
+          <Card loading={loading}>
             <Statistic
               title="Total Products"
               value={productStats.totalProducts}
@@ -181,7 +181,7 @@ const Dashboard: React.FC = () => {
           </Card>
         </Col>
         <Col span={8}>
-          <Card>
+          <Card loading={loading}>
             <Statistic
               title="Total Revenue"
               value={orderStats.totalRevenue}
