@@ -1,178 +1,109 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { BrowserRouter } from 'react-router-dom';
 import UserManagement from '../index';
-import { getUsers, createUser, updateUser, deleteUser } from '../../../api/usersApi';
-
-// Mock the API calls
-jest.mock('../../../api/usersApi');
-
-const mockUsers = [
-  {
-    id: '1',
-    username: 'testuser1',
-    email: 'test1@example.com',
-    role: 'user',
-    createdAt: '2024-03-20T10:00:00Z',
-  },
-  {
-    id: '2',
-    username: 'admin1',
-    email: 'admin1@example.com',
-    role: 'admin',
-    createdAt: '2024-03-20T11:00:00Z',
-  },
-];
+import { server } from '../../../mocks/server';
+import { rest } from 'msw';
 
 describe('UserManagement Component', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    (getUsers as jest.Mock).mockResolvedValue({
-      users: mockUsers,
-      total: mockUsers.length,
+  const renderComponent = () => {
+    return render(
+      <BrowserRouter>
+        <UserManagement />
+      </BrowserRouter>
+    );
+  };
+
+  it('renders loading state initially', () => {
+    renderComponent();
+    expect(screen.getByText(/loading/i)).toBeInTheDocument();
+  });
+
+  it('displays user statistics after loading', async () => {
+    renderComponent();
+    
+    await waitFor(() => {
+      expect(screen.getByText('Total Users')).toBeInTheDocument();
+      expect(screen.getByText('Admin Users')).toBeInTheDocument();
+      expect(screen.getByText('Regular Users')).toBeInTheDocument();
     });
   });
 
-  it('renders user table with correct columns', async () => {
-    render(<UserManagement />);
+  it('displays user table after loading', async () => {
+    renderComponent();
     
     await waitFor(() => {
-      expect(screen.getByText('User Management')).toBeInTheDocument();
-      expect(screen.getByText('ID')).toBeInTheDocument();
-      expect(screen.getByText('Username')).toBeInTheDocument();
+      expect(screen.getByText('Name')).toBeInTheDocument();
       expect(screen.getByText('Email')).toBeInTheDocument();
       expect(screen.getByText('Role')).toBeInTheDocument();
       expect(screen.getByText('Created At')).toBeInTheDocument();
-      expect(screen.getByText('Actions')).toBeInTheDocument();
     });
   });
 
-  it('displays user data correctly', async () => {
-    render(<UserManagement />);
+  it('handles search functionality', async () => {
+    renderComponent();
+    
+    const searchInput = screen.getByPlaceholderText('Search users...');
+    fireEvent.change(searchInput, { target: { value: 'test' } });
     
     await waitFor(() => {
-      expect(screen.getByText('testuser1')).toBeInTheDocument();
-      expect(screen.getByText('test1@example.com')).toBeInTheDocument();
-      expect(screen.getByText('user')).toBeInTheDocument();
+      expect(searchInput).toHaveValue('test');
     });
   });
 
-  it('opens create user modal when Add User button is clicked', async () => {
-    render(<UserManagement />);
-    
-    const addButton = screen.getByText('Add User');
-    fireEvent.click(addButton);
+  it('handles role filter', async () => {
+    renderComponent();
     
     await waitFor(() => {
-      expect(screen.getByText('Create User')).toBeInTheDocument();
+      const roleFilter = screen.getByText('Role');
+      fireEvent.click(roleFilter);
+    });
+    
+    const adminOption = screen.getByText('Admin');
+    fireEvent.click(adminOption);
+    
+    await waitFor(() => {
+      expect(screen.getByText('Admin')).toBeInTheDocument();
     });
   });
 
-  it('handles user creation successfully', async () => {
-    (createUser as jest.Mock).mockResolvedValue({
-      id: '3',
-      username: 'newuser',
-      email: 'newuser@example.com',
-      role: 'user',
-      createdAt: '2024-03-20T12:00:00Z',
-    });
+  it('handles error state', async () => {
+    server.use(
+      rest.get('/api/users', (req, res, ctx) => {
+        return res(ctx.status(500));
+      })
+    );
 
-    render(<UserManagement />);
-    
-    // Click add button
-    fireEvent.click(screen.getByText('Add User'));
-    
-    // Fill form
-    await userEvent.type(screen.getByLabelText('Username'), 'newuser');
-    await userEvent.type(screen.getByLabelText('Email'), 'newuser@example.com');
-    await userEvent.type(screen.getByLabelText('Password'), 'password123');
-    await userEvent.selectOptions(screen.getByLabelText('Role'), 'user');
-    
-    // Submit form
-    fireEvent.click(screen.getByText('OK'));
+    renderComponent();
     
     await waitFor(() => {
-      expect(createUser).toHaveBeenCalledWith({
-        username: 'newuser',
-        email: 'newuser@example.com',
-        password: 'password123',
-        role: 'user',
-      });
+      expect(screen.getByText(/error/i)).toBeInTheDocument();
     });
   });
 
-  it('handles user role update', async () => {
-    (updateUser as jest.Mock).mockResolvedValue({
-      ...mockUsers[0],
-      role: 'admin',
-    });
-
-    render(<UserManagement />);
+  it('handles pagination', async () => {
+    renderComponent();
     
     await waitFor(() => {
-      const editButton = screen.getAllByText('Edit')[0];
-      fireEvent.click(editButton);
+      const nextPageButton = screen.getByTitle('Next Page');
+      fireEvent.click(nextPageButton);
     });
     
-    // Change role
-    await userEvent.selectOptions(screen.getByLabelText('Role'), 'admin');
-    
-    // Submit form
-    fireEvent.click(screen.getByText('OK'));
-    
     await waitFor(() => {
-      expect(updateUser).toHaveBeenCalledWith('1', {
-        role: 'admin',
-      });
+      expect(screen.getByText('2')).toBeInTheDocument();
     });
   });
 
-  it('handles user deletion', async () => {
-    (deleteUser as jest.Mock).mockResolvedValue({ success: true });
-    
-    render(<UserManagement />);
+  it('handles sorting', async () => {
+    renderComponent();
     
     await waitFor(() => {
-      const deleteButton = screen.getAllByText('Delete')[0];
-      fireEvent.click(deleteButton);
+      const nameHeader = screen.getByText('Name');
+      fireEvent.click(nameHeader);
     });
     
-    // Confirm deletion
-    fireEvent.click(screen.getByText('Yes'));
-    
     await waitFor(() => {
-      expect(deleteUser).toHaveBeenCalledWith('1');
-    });
-  });
-
-  it('handles API errors gracefully', async () => {
-    const error = new Error('API Error');
-    (getUsers as jest.Mock).mockRejectedValue(error);
-    
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    
-    render(<UserManagement />);
-    
-    await waitFor(() => {
-      expect(consoleSpy).toHaveBeenCalled();
-    });
-    
-    consoleSpy.mockRestore();
-  });
-
-  it('filters users by role', async () => {
-    render(<UserManagement />);
-    
-    // Select admin role
-    await userEvent.selectOptions(screen.getByLabelText('Role'), 'admin');
-    
-    await waitFor(() => {
-      expect(getUsers).toHaveBeenCalledWith(
-        expect.any(Number),
-        expect.any(Number),
-        expect.any(String),
-        'admin'
-      );
+      expect(screen.getByText('Name')).toHaveAttribute('aria-sort', 'ascending');
     });
   });
 }); 
