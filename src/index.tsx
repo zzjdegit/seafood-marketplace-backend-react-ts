@@ -16,8 +16,12 @@ prepare().then(() => {
     document.getElementById('root') as HTMLElement
   );
   root.render(
-    <React.StrictMode>
+    process.env.NODE_ENV === 'development' ? (
       <App />
-    </React.StrictMode>
+    ) : (
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    )
   );
 });

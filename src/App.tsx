@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
-import { Layout, Menu, Avatar, Dropdown } from 'antd';
+import { Layout, Menu, Avatar, Dropdown, Spin } from 'antd';
 import {
   ShoppingCartOutlined,
   ShoppingOutlined,
@@ -9,12 +9,26 @@ import {
   LogoutOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
-import OrderManagement from './components/OrderManagement';
-import ProductManagement from './components/ProductManagement';
-import UserManagement from './components/UserManagement';
-import Dashboard from './components/Dashboard';
+
+// Lazy load components
+const Dashboard = lazy(() => import('./components/Dashboard'));
+const OrderManagement = lazy(() => import('./components/OrderManagement'));
+const ProductManagement = lazy(() => import('./components/ProductManagement'));
+const UserManagement = lazy(() => import('./components/UserManagement'));
 
 const { Header, Content, Sider } = Layout;
+
+// Loading component
+const Loading = () => (
+  <div style={{ 
+    display: 'flex', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    height: '100vh' 
+  }}>
+    <Spin size="large" />
+  </div>
+);
 
 const MainLayout: React.FC = () => {
   const location = useLocation();
@@ -62,62 +76,93 @@ const MainLayout: React.FC = () => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Header style={{ 
-        padding: '0 24px', 
-        background: '#fff', 
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        position: 'fixed',
-        width: '100%',
-        top: 0,
-        zIndex: 1000,
-        boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 600 }}>
-            Seafood Marketplace
-          </h1>
-        </div>
-        <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
-          <Avatar 
+      <Sider 
+        width={200} 
+        theme="light"
+        style={{
+          boxShadow: '2px 0 8px 0 rgba(29,35,41,.05)',
+          position: 'fixed',
+          left: 0,
+          height: '100vh',
+          zIndex: 1000,
+        }}
+      >
+        <div style={{ 
+          height: 64, 
+          padding: '16px', 
+          display: 'flex', 
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderBottom: '1px solid #f0f0f0'
+        }}>
+          <img 
+            src="https://img.icons8.com/color/48/000000/fish-food.png" 
+            alt="Seafood Marketplace Logo" 
             style={{ 
-              backgroundColor: '#1890ff',
-              cursor: 'pointer',
+              width: 32, 
+              height: 32, 
+              marginRight: 8 
             }} 
-            icon={<UserOutlined />} 
           />
-        </Dropdown>
-      </Header>
-      <Layout style={{ marginTop: 64 }}>
-        <Sider 
-          width={200} 
+          <span style={{ 
+            fontSize: 16, 
+            fontWeight: 600,
+            color: '#1890ff'
+          }}>
+            Seafood Market
+          </span>
+        </div>
+        <Menu
+          mode="inline"
+          selectedKeys={[location.pathname]}
+          items={menuItems}
           style={{ 
-            background: '#fff',
-            height: 'calc(100vh - 64px)',
-            position: 'fixed',
-            left: 0,
-            overflow: 'auto',
-            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.06)',
+            height: 'calc(100vh - 64px)', 
+            borderRight: 0,
+            paddingTop: 8
           }}
-        >
-          <Menu
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            style={{ height: '100%', borderRight: 0 }}
-            items={menuItems}
-          />
-        </Sider>
-        <Layout style={{ marginLeft: 200, minHeight: 'calc(100vh - 64px)' }}>
-          <Content style={{ padding: '24px', background: '#f5f7fa' }}>
-            <Routes>
+        />
+      </Sider>
+      <Layout style={{ marginLeft: 200, minHeight: '100vh' }}>
+        <Header style={{ 
+          background: '#fff', 
+          padding: '0 24px', 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          alignItems: 'center',
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          left: 200,
+          zIndex: 999,
+          boxShadow: '0 2px 8px 0 rgba(29,35,41,.05)'
+        }}>
+          <Dropdown menu={{ items: userMenuItems }} placement="bottomRight">
+            <Avatar 
+              style={{ 
+                backgroundColor: '#1890ff',
+                cursor: 'pointer'
+              }} 
+              icon={<UserOutlined />} 
+            />
+          </Dropdown>
+        </Header>
+        <Content style={{ 
+          margin: '88px 24px 24px', 
+          padding: 24, 
+          background: '#fff', 
+          minHeight: 280,
+          borderRadius: 8
+        }}>
+          <Suspense fallback={<Loading />}>
+            <Routes location={location} key={location.pathname}>
+              <Route path="/" element={<Dashboard />} />
               <Route path="/orders" element={<OrderManagement />} />
               <Route path="/products" element={<ProductManagement />} />
               <Route path="/users" element={<UserManagement />} />
-              <Route path="/" element={<Dashboard />} />
             </Routes>
-          </Content>
-        </Layout>
+          </Suspense>
+        </Content>
       </Layout>
     </Layout>
   );
