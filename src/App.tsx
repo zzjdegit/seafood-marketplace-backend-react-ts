@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, useLocation, useRoutes } from 'react-router-dom';
 import { Layout, Menu, Avatar, Dropdown, Spin } from 'antd';
 import {
   ShoppingCartOutlined,
@@ -9,12 +9,15 @@ import {
   LogoutOutlined,
   SettingOutlined,
 } from '@ant-design/icons';
+import type { MenuProps } from 'antd';
+import routes from './routes';
 
 // Lazy load components
 const Dashboard = lazy(() => import('./components/Dashboard'));
 const OrderManagement = lazy(() => import('./components/OrderManagement'));
 const ProductManagement = lazy(() => import('./components/ProductManagement'));
 const UserManagement = lazy(() => import('./components/UserManagement'));
+const ConfigManagement = lazy(() => import('./components/ConfigManagement'));
 
 const { Header, Content, Sider } = Layout;
 
@@ -32,29 +35,16 @@ const Loading = () => (
 
 const MainLayout: React.FC = () => {
   const location = useLocation();
+  const element = useRoutes(routes);
 
-  const menuItems = [
-    {
-      key: '/',
-      icon: <DashboardOutlined />,
-      label: <Link to="/">Dashboard</Link>,
-    },
-    {
-      key: '/orders',
-      icon: <ShoppingCartOutlined />,
-      label: <Link to="/orders">Orders</Link>,
-    },
-    {
-      key: '/products',
-      icon: <ShoppingOutlined />,
-      label: <Link to="/products">Products</Link>,
-    },
-    {
-      key: '/users',
-      icon: <UserOutlined />,
-      label: <Link to="/users">Users</Link>,
-    },
-  ];
+  const menuItems: MenuProps['items'] = routes.map(route => ({
+    key: route.path || '/',
+    icon: route.handle?.icon,
+    label: route.handle?.label,
+    onClick: () => {
+      // Handle menu item click if needed
+    }
+  }));
 
   const userMenuItems = [
     {
@@ -160,6 +150,7 @@ const MainLayout: React.FC = () => {
               <Route path="/orders" element={<OrderManagement />} />
               <Route path="/products" element={<ProductManagement />} />
               <Route path="/users" element={<UserManagement />} />
+              <Route path="/config-management" element={<ConfigManagement />} />
             </Routes>
           </Suspense>
         </Content>
