@@ -38,9 +38,7 @@
   },
   "license": "MIT",
   "msw": {
-    "workerDirectory": [
-      "public"
-    ]
+    "workerDirectory": "public"
   },
   "browserslist": {
     "production": [

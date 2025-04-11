@@ -52,6 +52,13 @@ const UserManagement: React.FC = () => {
     adminUsers: 0,
     regularUsers: 0
   });
+  const [defaultSorter] = useState<{
+    field: string;
+    order: 'ascend' | 'descend' | null;
+  }>({
+    field: 'createdAt',
+    order: 'descend'
+  });
 
   const [form] = Form.useForm();
 
@@ -60,8 +67,8 @@ const UserManagement: React.FC = () => {
     pageSize = 10,
     search = '',
     role: string = '',
-    sortField = 'createdAt',
-    sortOrder: 'ascend' | 'descend' | null = null
+    sortField = defaultSorter.field,
+    sortOrder: 'ascend' | 'descend' | null = defaultSorter.order
   ) => {
     try {
       setLoading(true);
@@ -264,8 +271,9 @@ const UserManagement: React.FC = () => {
       dataIndex: 'createdAt',
       key: 'column-createdAt',
       sorter: true,
-      width: 120,
-      render: (date: string) => new Date(date).toLocaleDateString()
+      width: 180,
+      defaultSortOrder: 'descend' as const,
+      render: (text: string) => new Date(text).toLocaleString(),
     },
     {
       title: 'Actions',
