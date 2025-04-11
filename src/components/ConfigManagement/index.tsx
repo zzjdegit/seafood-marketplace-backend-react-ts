@@ -1,49 +1,43 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Row, Col, Table, Input, Button, Tag, Statistic } from 'antd';
+import { Card, Row, Col, Table, Input, Button, Tag, Statistic, message } from 'antd';
 import { SearchOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import ReactECharts from 'echarts-for-react';
+import { getConfigList, getGovernanceData, getDeliveryData, exportConfigData } from '../../api/configApi';
+import type { ConfigItem, ConfigStatistics, GovernanceData, DeliveryData } from '../../types/config';
 import styles from './index.module.less';
-
-interface ConfigStatistics {
-  totalConfigs: number;
-  normalConfigs: number;
-  warningConfigs: number;
-  errorConfigs: number;
-  deliveryCount: number;
-  deliveryRate: number;
-  upgradeRate: number;
-}
-
-interface ConfigData {
-  key: string;
-  id: string;
-  name: string;
-  march: string;
-  marchWarning: string;
-  april: string;
-  aprilWarning: string;
-  totalDelivery: string;
-  upgradeDelivery: string;
-  lastDeliveryTime: string;
-  deliveryStatus: string;
-  failureTime: string;
-}
 
 const ConfigManagement: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [statistics, setStatistics] = useState<ConfigStatistics>({
-    totalConfigs: 980,
-    normalConfigs: 671,
-    warningConfigs: 263,
-    errorConfigs: 636,
-    deliveryCount: 123456,
-    deliveryRate: 123456,
-    upgradeRate: 0.01
+    totalConfigs: 0,
+    normalConfigs: 0,
+    warningConfigs: 0,
+    errorConfigs: 0,
+    deliveryCount: 0,
+    deliveryRate: 0,
+    upgradeRate: 0,
+    monthlyChange: {
+      configs: 0,
+      delivery: 0,
+      upgrade: 0
+    }
+  });
+  const [governanceData, setGovernanceData] = useState<GovernanceData>({
+    normal: 0,
+    warning: 0,
+    error: 0,
+    others: 0
+  });
+  const [deliveryData, setDeliveryData] = useState<DeliveryData>({
+    delivered: 0,
+    delivering: 0,
+    undelivered: 0,
+    others: 0
   });
   const [searchText, setSearchText] = useState('');
-  const [data, setData] = useState<ConfigData[]>([]);
+  const [data, setData] = useState<ConfigItem[]>([]);
   const [pagination, setPagination] = useState<TablePaginationConfig>({
     current: 1,
     pageSize: 10,
@@ -53,44 +47,83 @@ const ConfigManagement: React.FC = () => {
     showTotal: (total) => `共 ${total} 条`,
   });
 
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const { current, pageSize } = pagination;
+      const response = await getConfigList({
+        page: current || 1,
+        pageSize: pageSize || 10,
+        search: searchText
+      });
+      setData(response.data);
+      setStatistics({
+        ...response.statistics,
+        monthlyChange: response.statistics.monthlyChange || {
+          configs: 0,
+          delivery: 0,
+          upgrade: 0
+        }
+      });
+      setPagination(prev => ({ ...prev, total: response.total }));
+    } catch (error) {
+      message.error('获取配置数据失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChartData = async () => {
+    try {
+      const [governanceResponse, deliveryResponse] = await Promise.all([
+        getGovernanceData(),
+        getDeliveryData()
+      ]);
+      setGovernanceData(governanceResponse);
+      setDeliveryData(deliveryResponse);
+    } catch (error) {
+      message.error('获取图表数据失败');
+    }
+  };
+
   useEffect(() => {
-    // 模拟加载数据
-    setLoading(true);
-    const mockData: ConfigData[] = Array(20).fill(null).map((_, index) => ({
-      key: (index + 1).toString(),
-      id: (index + 1).toString(),
-      name: `上海站${index + 1}`,
-      march: '12,123',
-      marchWarning: '文字内容',
-      april: '12,123',
-      aprilWarning: '文字内容',
-      totalDelivery: '12,123',
-      upgradeDelivery: '文字内容',
-      lastDeliveryTime: '12,123',
-      deliveryStatus: '文字内容',
-      failureTime: '文字内容',
-    }));
-    setData(mockData);
-    setPagination(prev => ({ ...prev, total: mockData.length }));
-    setLoading(false);
+    fetchData();
+    fetchChartData();
   }, []);
 
   const handleSearch = (value: string) => {
     setSearchText(value);
-    // 实现搜索逻辑
+    setPagination(prev => ({ ...prev, current: 1 }));
+    fetchData();
   };
 
   const handleTableChange = (
-    pagination: TablePaginationConfig,
+    newPagination: TablePaginationConfig,
     filters: Record<string, FilterValue | null>,
-    sorter: SorterResult<ConfigData> | SorterResult<ConfigData>[]
+    sorter: SorterResult<ConfigItem> | SorterResult<ConfigItem>[]
   ) => {
-    setPagination(pagination);
-    // 实现表格变化逻辑
+    setPagination(newPagination);
+    fetchData();
   };
 
-  const handleExport = () => {
-    // 实现导出逻辑
+  const handleExport = async () => {
+    try {
+      const blob = await exportConfigData({
+        page: 1,
+        pageSize: pagination.total || 0,
+        search: searchText
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `配置管理数据_${new Date().getTime()}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      message.error('导出数据失败');
+    }
   };
 
   const getGovernancePieOption = () => ({
@@ -111,14 +144,13 @@ const ConfigManagement: React.FC = () => {
         color: 'rgba(0, 0, 0, 0.65)'
       },
       formatter: (name: string) => {
-        const data = [
-          { name: '正常配点', value: 471 },
-          { name: '预警配点', value: 263 },
-          { name: '异常配点', value: 636 },
-          { name: '其他配点', value: 200 }
-        ];
-        const item = data.find(item => item.name === name);
-        return `${name}  ${item?.value}`;
+        const dataMap = {
+          '正常配点': governanceData.normal,
+          '预警配点': governanceData.warning,
+          '异常配点': governanceData.error,
+          '其他配点': governanceData.others
+        };
+        return `${name}  ${dataMap[name as keyof typeof dataMap]}`;
       }
     },
     graphic: {
@@ -128,18 +160,16 @@ const ConfigManagement: React.FC = () => {
           left: '30%',
           top: '45%',
           style: {
-            text: '980',
+            text: statistics?.totalConfigs?.toString() || '--',
             fontSize: 24,
             fontWeight: 'normal',
-            lineDash: [0, 200],
-            lineDashOffset: 0,
             fill: 'rgba(0,0,0,0.85)',
             textAlign: 'center'
           }
         },
         {
           type: 'text',
-          left: '33%',
+          left: '32%',
           top: '65%',
           style: {
             text: '总数',
@@ -166,10 +196,10 @@ const ConfigManagement: React.FC = () => {
           show: false
         },
         data: [
-          { value: 471, name: '正常配点' },
-          { value: 263, name: '预警配点' },
-          { value: 636, name: '异常配点' },
-          { value: 200, name: '其他配点' }
+          { value: governanceData.normal, name: '正常配点' },
+          { value: governanceData.warning, name: '预警配点' },
+          { value: governanceData.error, name: '异常配点' },
+          { value: governanceData.others, name: '其他配点' }
         ]
       }
     ]
@@ -193,14 +223,13 @@ const ConfigManagement: React.FC = () => {
         color: 'rgba(0, 0, 0, 0.65)'
       },
       formatter: (name: string) => {
-        const data = [
-          { name: '已送达', value: 471 },
-          { name: '送达中', value: 263 },
-          { name: '未送达', value: 636 },
-          { name: '其他状态', value: 200 }
-        ];
-        const item = data.find(item => item.name === name);
-        return `${name}  ${item?.value}`;
+        const dataMap = {
+          '已送达': deliveryData.delivered,
+          '送达中': deliveryData.delivering,
+          '未送达': deliveryData.undelivered,
+          '其他状态': deliveryData.others
+        };
+        return `${name}  ${dataMap[name as keyof typeof dataMap]}`;
       }
     },
     graphic: {
@@ -210,18 +239,16 @@ const ConfigManagement: React.FC = () => {
           left: '30%',
           top: '45%',
           style: {
-            text: '980',
+            text: statistics?.totalConfigs?.toString() || '--',
             fontSize: 24,
             fontWeight: 'normal',
-            lineDash: [0, 200],
-            lineDashOffset: 0,
             fill: 'rgba(0,0,0,0.85)',
             textAlign: 'center'
           }
         },
         {
           type: 'text',
-          left: '33%',
+          left: '32%',
           top: '65%',
           style: {
             text: '总数',
@@ -248,10 +275,10 @@ const ConfigManagement: React.FC = () => {
           show: false
         },
         data: [
-          { value: 471, name: '已送达' },
-          { value: 263, name: '送达中' },
-          { value: 636, name: '未送达' },
-          { value: 200, name: '其他状态' }
+          { value: deliveryData.delivered, name: '已送达' },
+          { value: deliveryData.delivering, name: '送达中' },
+          { value: deliveryData.undelivered, name: '未送达' },
+          { value: deliveryData.others, name: '其他状态' }
         ]
       }
     ]
@@ -272,7 +299,7 @@ const ConfigManagement: React.FC = () => {
     },
     {
       title: '3月基线',
-      dataIndex: 'march',
+      dataIndex: 'marchBaseline',
       width: 100,
     },
     {
@@ -285,7 +312,7 @@ const ConfigManagement: React.FC = () => {
     },
     {
       title: '4月基线',
-      dataIndex: 'april',
+      dataIndex: 'aprilBaseline',
       width: 100,
     },
     {
@@ -303,7 +330,7 @@ const ConfigManagement: React.FC = () => {
     },
     {
       title: '升级送达状态',
-      dataIndex: 'upgradeDelivery',
+      dataIndex: 'upgradeDeliveryStatus',
       width: 120,
       render: (text: string) => (
         <Tag color="processing">{text}</Tag>
@@ -321,7 +348,7 @@ const ConfigManagement: React.FC = () => {
     },
     {
       title: '生效时间',
-      dataIndex: 'failureTime',
+      dataIndex: 'effectiveTime',
       width: 150,
     },
   ];
@@ -338,7 +365,9 @@ const ConfigManagement: React.FC = () => {
                   <div className={styles.number}>{statistics.totalConfigs}</div>
                   <div className={styles.label}>
                     <div>治理评估点数</div>
-                    <div className={styles.subLabel}>较上月 -2 -3 -4</div>
+                    <div className={styles.subLabel}>
+                      较上月 {statistics.monthlyChange.configs > 0 ? '+' : ''}{statistics.monthlyChange.configs}
+                    </div>
                   </div>
                 </div>
                 <div className={styles.pieChart}>
@@ -358,7 +387,9 @@ const ConfigManagement: React.FC = () => {
                   <div className={styles.number}>{statistics.totalConfigs}</div>
                   <div className={styles.label}>
                     <div>治理评估点数</div>
-                    <div className={styles.subLabel}>较上月 -2 -3 -4</div>
+                    <div className={styles.subLabel}>
+                      较上月 {statistics.monthlyChange.delivery > 0 ? '+' : ''}{statistics.monthlyChange.delivery}
+                    </div>
                   </div>
                 </div>
                 <div className={styles.pieChart}>
@@ -377,7 +408,11 @@ const ConfigManagement: React.FC = () => {
               <Statistic
                 title="治理数"
                 value={statistics.deliveryCount}
-                suffix={<span className={styles.trend}>+1.23</span>}
+                suffix={
+                  <span className={styles.trend}>
+                    {statistics.monthlyChange.configs > 0 ? '+' : ''}{statistics.monthlyChange.configs}
+                  </span>
+                }
               />
             </Card>
           </Col>
@@ -386,7 +421,11 @@ const ConfigManagement: React.FC = () => {
               <Statistic
                 title="送达数"
                 value={statistics.deliveryRate}
-                suffix={<span className={styles.trend}>+1.23</span>}
+                suffix={
+                  <span className={styles.trend}>
+                    {statistics.monthlyChange.delivery > 0 ? '+' : ''}{statistics.monthlyChange.delivery}
+                  </span>
+                }
               />
             </Card>
           </Col>
@@ -395,7 +434,11 @@ const ConfigManagement: React.FC = () => {
               <Statistic
                 title="升级送达"
                 value={statistics.upgradeRate}
-                suffix={<span className={styles.trend}>+1.23</span>}
+                suffix={
+                  <span className={styles.trend}>
+                    {statistics.monthlyChange.upgrade > 0 ? '+' : ''}{statistics.monthlyChange.upgrade}
+                  </span>
+                }
               />
             </Card>
           </Col>
