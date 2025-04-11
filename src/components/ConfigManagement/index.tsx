@@ -4,6 +4,7 @@ import { SearchOutlined, DownloadOutlined } from '@ant-design/icons';
 import type { TablePaginationConfig } from 'antd/es/table';
 import type { FilterValue, SorterResult } from 'antd/es/table/interface';
 import ReactECharts from 'echarts-for-react';
+import moment from 'moment';
 import { getConfigList, getGovernanceData, getDeliveryData, exportConfigData } from '../../api/configApi';
 import type { ConfigItem, ConfigStatistics, GovernanceData, DeliveryData } from '../../types/config';
 import styles from './index.module.less';
@@ -167,18 +168,6 @@ const ConfigManagement: React.FC = () => {
             textAlign: 'center'
           }
         },
-        {
-          type: 'text',
-          left: '32%',
-          top: '65%',
-          style: {
-            text: '总数',
-            fontSize: 12,
-            fontWeight: 'normal',
-            fill: 'rgba(0,0,0,0.45)',
-            textAlign: 'center'
-          }
-        }
       ]
     },
     color: ['#52C41A', '#FAAD14', '#FF4D4F', '#1890FF'],
@@ -246,18 +235,6 @@ const ConfigManagement: React.FC = () => {
             textAlign: 'center'
           }
         },
-        {
-          type: 'text',
-          left: '32%',
-          top: '65%',
-          style: {
-            text: '总数',
-            fontSize: 12,
-            fontWeight: 'normal',
-            fill: 'rgba(0,0,0,0.45)',
-            textAlign: 'center'
-          }
-        }
       ]
     },
     color: ['#52C41A', '#FAAD14', '#FF4D4F', '#1890FF'],
@@ -286,13 +263,14 @@ const ConfigManagement: React.FC = () => {
 
   const columns = [
     {
-      title: '序号',
-      dataIndex: 'id',
-      width: 80,
+      title: 'ID',
+      dataIndex: '_id',
+      key: 'column-id',
+      width: 240,
       fixed: 'left' as const,
     },
     {
-      title: '商品名称',
+      title: '配置名称',
       dataIndex: 'name',
       width: 200,
       fixed: 'left' as const,
@@ -307,7 +285,7 @@ const ConfigManagement: React.FC = () => {
       dataIndex: 'marchWarning',
       width: 120,
       render: (text: string) => (
-        <Tag color="success">{text}</Tag>
+        text ? <Tag color="success">{text}</Tag> : '--'
       ),
     },
     {
@@ -320,7 +298,7 @@ const ConfigManagement: React.FC = () => {
       dataIndex: 'aprilWarning',
       width: 120,
       render: (text: string) => (
-        <Tag color="success">{text}</Tag>
+        text ? <Tag color="success">{text}</Tag> : '--'
       ),
     },
     {
@@ -339,12 +317,18 @@ const ConfigManagement: React.FC = () => {
     {
       title: '最后送达时间',
       dataIndex: 'lastDeliveryTime',
-      width: 150,
+      width: 250,
+      render: (text: string) => (
+        moment(text).format('YYYY-MM-DD HH:mm:ss')
+      ),
     },
     {
       title: '送达状态判例',
       dataIndex: 'deliveryStatus',
       width: 120,
+      render: (text: string) => (
+        <Tag color="geekblue">{text}</Tag>
+      ),
     },
     {
       title: '生效时间',
@@ -420,7 +404,7 @@ const ConfigManagement: React.FC = () => {
             <Card variant="outlined" className={styles.statsCard}>
               <Statistic
                 title="送达数"
-                value={statistics.deliveryRate}
+                value={statistics.deliveryRate?.toFixed(0)}
                 suffix={
                   <span className={styles.trend}>
                     {statistics.monthlyChange.delivery > 0 ? '+' : ''}{statistics.monthlyChange.delivery}
@@ -433,7 +417,7 @@ const ConfigManagement: React.FC = () => {
             <Card variant="outlined" className={styles.statsCard}>
               <Statistic
                 title="升级送达"
-                value={statistics.upgradeRate}
+                value={statistics.upgradeRate?.toFixed(0)}
                 suffix={
                   <span className={styles.trend}>
                     {statistics.monthlyChange.upgrade > 0 ? '+' : ''}{statistics.monthlyChange.upgrade}
@@ -480,6 +464,7 @@ const ConfigManagement: React.FC = () => {
           scroll={{ x: 1500 }}
           size="middle"
           bordered
+          rowKey={(record) => record._id}
         />
       </Card>
     </div>

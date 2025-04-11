@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ConfigModel } from '../models/config';
+import * as XLSX from 'xlsx';
 
 export const getConfigList = async (req: Request, res: Response) => {
   try {
@@ -196,15 +197,55 @@ export const exportConfigData = async (req: Request, res: Response) => {
     
     const data = await ConfigModel.find(query).lean();
     
-    // 这里需要实现导出Excel的逻辑
-    // 可以使用 xlsx 库来生成 Excel 文件
+    // Prepare worksheet data
+    const worksheetData = data.map(item => ({
+      '配置名称': item.name,
+      '状态': item.status === 'normal' ? '正常' : item.status === 'warning' ? '预警' : '异常',
+      '配送状态': item.deliveryStatus === 'delivered' ? '已送达' : 
+                 item.deliveryStatus === 'delivering' ? '送达中' : '未送达',
+      '升级状态': item.upgradeDeliveryStatus === 'upgraded' ? '已升级' : '未升级',
+      '累计配送数': item.totalDelivery,
+      '配送率': `${Math.round(item.deliveryRate)}%`,
+      '升级率': `${Math.round(item.upgradeRate)}%`,
+      '最后配送时间': item.lastDeliveryTime ? new Date(item.lastDeliveryTime).toLocaleString() : '无',
+      '创建时间': new Date(item.createdAt).toLocaleString(),
+      '更新时间': new Date(item.updatedAt).toLocaleString()
+    }));
+
+    // Create workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+
+    // Set column widths
+    const colWidths = [
+      { wch: 20 }, // 配置名称
+      { wch: 10 }, // 状态
+      { wch: 10 }, // 配送状态
+      { wch: 10 }, // 升级状态
+      { wch: 12 }, // 累计配送数
+      { wch: 10 }, // 配送率
+      { wch: 10 }, // 升级率
+      { wch: 20 }, // 最后配送时间
+      { wch: 20 }, // 创建时间
+      { wch: 20 }  // 更新时间
+    ];
+    worksheet['!cols'] = colWidths;
+
+    // Add worksheet to workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, '配置管理数据');
+
+    // Generate Excel buffer
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'buffer' });
     
+    // Set response headers with proper encoding
+    const filename = `config_data_${new Date().getTime()}.xlsx`;
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename=config_data_${Date.now()}.xlsx`);
+    res.setHeader('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`);
     
-    // 发送Excel文件
-    // res.send(excelBuffer);
+    // Send Excel file
+    res.send(excelBuffer);
   } catch (error) {
+    console.error('导出数据失败:', error);
     res.status(500).json({ message: '导出数据失败' });
   }
 }; 

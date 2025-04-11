@@ -1,4 +1,5 @@
 export interface ConfigItem {
+  _id: string;
   id: string;
   name: string;
   marchBaseline: number;
